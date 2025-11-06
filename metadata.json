@@ -1,0 +1,5 @@
+{
+  "name": "It-Da: AI Chat Analysis Service",
+  "description": "An AI-powered service that analyzes messenger conversations to visualize relationship metrics like intimacy, balance, and emotional tone. It also simulates how changes in communication style might affect the relationship.",
+  "requestFramePermissions": []
+}
