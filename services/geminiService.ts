@@ -109,51 +109,54 @@ const analysisSchema = {
 };
 
 
+
+// 원래 있던 analyzeChat을 지우고 이 코드를 붙여넣으세요!
 export const analyzeChat = async (chatText: string, mode: RelationshipMode, language: 'ko' | 'en'): Promise<AnalysisResult> => {
-  const prompt = `
-    You are a world-class relationship analysis AI named 'It-Da'. Your task is to analyze a conversation text and provide a structured JSON output based on the provided schema. The analysis must be objective, data-driven, and insightful.
-
-    **IMPORTANT: The entire JSON output, including all text fields like 'summary', 'recommendation', 'suggestedReplies', and 'suggestedTopics', MUST be in ${language === 'ko' ? 'Korean' : 'English'}.**
-
-    The conversation is between two people. First, identify the two main speakers from the chat log. The format is typically 'Name: Message'.
-
-    Here is the analysis context:
-    - Relationship Mode: ${mode}
-    - Your analysis should reflect the nuances of this specific relationship type.
-
-    Please perform the following analysis:
-    1.  **Intimacy Score (친밀도):** Calculate a score from 0-100.
-    2.  **Balance Ratio (균형):** Calculate the percentage of total message volume for each speaker.
-    3.  **Sentiment (감정 톤):** Analyze the overall emotional tone and provide percentages for positive, negative, and neutral sentiments.
-    4.  **Average Response Time (평균 응답 시간):** Calculate the average time in minutes for each person to respond. If timestamps are not present, return null for time values.
-    5.  **Summary (요약):** Provide a short summary of the relationship's state.
-    6.  **Recommendation (추천):** Give one concrete, actionable piece of advice.
-    7.  **Sentiment Flow (감정 흐름):** Analyze the conversation chronologically and provide an array of sentiment scores over time. Generate exactly 20 data points, evenly spaced from time_percentage 0 to 100. Each data point should have a 'time_percentage' (0-100) and a 'sentiment_score' (-1 to 1).
-    8.  **Response Heatmap (응답 패턴 히트맵):** Analyze message timestamps if available. Provide an array of exactly 24 numbers, where each index (0-23) represents an hour of the day and its value is the total message count for that hour. If there are no timestamps, return an array of 24 zeros.
-    9.  **Next Conversation Suggestions:** Based on the last few messages, provide an array of 2-3 potential replies to the last message, and an array of 2-3 interesting topics to discuss next. If the conversation seems concluded, focus on new topics.
-
-    Conversation to analyze:
-    ---
-    ${chatText}
-    ---
-  `;
-
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: analysisSchema,
+    // 1. 우리가 만든 RAG 서버(api/chat)에게 질문 보내기
+    // (Carnegie 조언을 구하러 감!)
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ message: chatText }),
     });
-    
-    const jsonString = response.text.trim();
-    return JSON.parse(jsonString) as AnalysisResult;
+
+    if (!response.ok) {
+      throw new Error('RAG 서버 연결 실패');
+    }
+
+    const data = await response.json();
+    const ragAdvice = data.reply; // 여기에 "🥕당근"과 카네기 조언이 들어있음!
+
+    // 2. 화면에 보여줄 결과 만들기 (AnalysisResult 형식 맞추기)
+    // 점수나 그래프는 일단 고정된 값(테스트용)을 넣고, 
+    // ★핵심: 'recommendation' 부분에 RAG 답변을 넣습니다!
+    return {
+      intimacyScore: 85,
+      balanceRatio: { speaker1: 50, speaker2: 50 },
+      sentiment: { positive: 40, neutral: 30, negative: 30 },
+      averageResponseTime: { speaker1: 5, speaker2: 10 },
+      
+      // 제목에 테스트 성공 여부 표시
+      summary: language === 'ko' 
+        ? "RAG 연동 테스트 결과입니다. (아래 추천 내용을 확인하세요!)" 
+        : "RAG Integration Test Result. (Check recommendation below!)",
+        
+      // ★ 여기가 중요! RAG가 준 답변을 여기에 보여줍니다.
+      recommendation: ragAdvice, 
+      
+      // 나머지는 화면 깨짐 방지용 더미 데이터
+      sentimentFlow: Array(20).fill(null).map((_, i) => ({ time_percentage: i * 5, sentiment_score: 0.5 })),
+      responseHeatmap: Array(24).fill(0),
+      suggestedReplies: ["알겠습니다.", "그렇군요.", "이해했습니다."],
+      suggestedTopics: ["관계 개선", "대화법", "취미 공유"]
+    };
 
   } catch (error) {
     console.error("Error analyzing chat:", error);
-    throw new Error("Failed to analyze the conversation. The AI model might be experiencing issues.");
+    throw new Error("분석 중 오류가 발생했습니다.");
   }
 };
 
