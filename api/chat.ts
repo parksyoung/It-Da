@@ -36,7 +36,7 @@ export default async function handler(req, res) {
     console.log("검색된 내용:", context);
 
     // 6. Gemini 답변 생성 (강력한 프롬프트)
-    const chatModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const chatModel = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `
     당신은 데일 카네기의 '인간관계론' 전문가입니다. 
