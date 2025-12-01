@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     const context = queryResponse.matches.map((match: any) => match.metadata.text).join("\n\n");
 
     // 5. Gemini 답변 생성
-    const chatModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const chatModel = genAI.getGenerativeModel({ model: "gemini-pro" });
     const prompt = `
     다음 정보를 바탕으로 질문에 답해줘. 정보에 없으면 모른다고 해.
     
