@@ -1,7 +1,7 @@
 import { Pinecone } from "@pinecone-database/pinecone";
 
 export default async function handler(req, res) {
-  // 1. POST 요청만 받기
+  // 1. POST 요청만 허용
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -10,8 +10,7 @@ export default async function handler(req, res) {
     const { message } = req.body;
     const apiKey = process.env.GOOGLE_API_KEY;
 
-    // 2. 임베딩 (라이브러리 X -> 구글에 직접 요청)
-    // 모델: text-embedding-004
+    // 2. 임베딩 (text-embedding-004 모델 사용 - 이건 잘 작동중!)
     const embeddingResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`,
       {
@@ -33,7 +32,7 @@ export default async function handler(req, res) {
     const embeddingData = await embeddingResponse.json();
     const queryVector = embeddingData.embedding.values;
 
-    // 3. 파인콘 검색 (이건 이미 잘 됨!)
+    // 3. 파인콘 검색 (이미 성공함! 로그에 잘 찍히고 있음)
     const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
     const index = pinecone.index(process.env.PINECONE_INDEX_NAME);
     
@@ -46,8 +45,8 @@ export default async function handler(req, res) {
     const context = queryResponse.matches.map((match) => match.metadata.text).join("\n\n");
     console.log("파인콘 검색 내용:", context);
 
-    // 4. Gemini 답변 (라이브러리 X -> 구글에 직접 요청)
-    // ★ gemini-1.5-flash 모델 사용 (API 키 호환성 최고!)
+    // 4. Gemini 답변 (★ 여기가 핵심 변경!)
+    // gemini-1.5-flash 대신 호환성 끝판왕 'gemini-pro' 사용
     const prompt = `
     당신은 카네기 인간관계론 전문가입니다. 아래 [참고 자료]를 바탕으로 조언해주세요.
     
@@ -61,7 +60,7 @@ export default async function handler(req, res) {
     `;
 
     const chatResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -74,6 +73,7 @@ export default async function handler(req, res) {
     if (!chatResponse.ok) {
         const errText = await chatResponse.text();
         console.error("Gemini API Error:", errText);
+        // 에러 내용을 더 자세히 보기 위해 로그에 출력
         throw new Error(`Gemini Error: ${chatResponse.status} - ${errText}`);
     }
 
