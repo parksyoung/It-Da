@@ -111,10 +111,8 @@ const analysisSchema = {
 
 
 // 원래 있던 analyzeChat을 지우고 이 코드를 붙여넣으세요!
-export const analyzeChat = async (chatText: string, mode: RelationshipMode, language: 'ko' | 'en'): Promise<AnalysisResult> => {
+export const analyzeChat = async (chatText: string, mode: string, language: string) => {
   try {
-    // 1. 우리가 만든 RAG 서버(api/chat)에게 질문 보내기
-    // (Carnegie 조언을 구하러 감!)
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: {
@@ -124,42 +122,21 @@ export const analyzeChat = async (chatText: string, mode: RelationshipMode, lang
     });
 
     if (!response.ok) {
-      throw new Error('RAG 서버 연결 실패');
+      throw new Error('서버 연결 실패 ㅠㅠ');
     }
 
+    // ★ 여기가 핵심!
+    // 백엔드가 이미 완벽한 '종합 선물세트(JSON)'를 만들어서 보냈으니
+    // 우리는 그걸 그대로 받아서 화면(App.tsx)에 넘겨주기만 하면 됩니다.
     const data = await response.json();
-    const ragAdvice = data.reply; // 여기에 "🥕당근"과 카네기 조언이 들어있음!
-
-    // 2. 화면에 보여줄 결과 만들기 (AnalysisResult 형식 맞추기)
-    // 점수나 그래프는 일단 고정된 값(테스트용)을 넣고, 
-    // ★핵심: 'recommendation' 부분에 RAG 답변을 넣습니다!
-    return {
-      intimacyScore: 85,
-      balanceRatio: { speaker1: 50, speaker2: 50 },
-      sentiment: { positive: 40, neutral: 30, negative: 30 },
-      averageResponseTime: { speaker1: 5, speaker2: 10 },
-      
-      // 제목에 테스트 성공 여부 표시
-      summary: language === 'ko' 
-        ? "RAG 연동 테스트 결과입니다. (아래 추천 내용을 확인하세요!)" 
-        : "RAG Integration Test Result. (Check recommendation below!)",
-        
-      // ★ 여기가 중요! RAG가 준 답변을 여기에 보여줍니다.
-      recommendation: ragAdvice, 
-      
-      // 나머지는 화면 깨짐 방지용 더미 데이터
-      sentimentFlow: Array(20).fill(null).map((_, i) => ({ time_percentage: i * 5, sentiment_score: 0.5 })),
-      responseHeatmap: Array(24).fill(0),
-      suggestedReplies: ["알겠습니다.", "그렇군요.", "이해했습니다."],
-      suggestedTopics: ["관계 개선", "대화법", "취미 공유"]
-    };
+    
+    return data; 
 
   } catch (error) {
-    console.error("Error analyzing chat:", error);
-    throw new Error("분석 중 오류가 발생했습니다.");
+    console.error("에러 발생:", error);
+    throw error;
   }
 };
-
 
 const simulationSchema = {
     type: Type.OBJECT,
