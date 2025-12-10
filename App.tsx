@@ -8,6 +8,7 @@ import LandingPage from './components/LandingPage';
 import RelationshipMap from './components/RelationshipMap';
 import { SparklesIcon, ArrowLeftIcon, PlusIcon } from './components/icons';
 import { useLanguage } from './contexts/LanguageContext';
+import { useAuth } from './contexts/AuthContext';
 import ChatInputForm from './components/ChatInputForm';
 
 type View = 'landing' | 'map' | 'input' | 'dashboard';
@@ -18,10 +19,28 @@ const LanguageToggle: React.FC = () => {
     return (
         <button
             onClick={toggleLanguage}
-            className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold text-gray-600 shadow-md hover:bg-gray-100 smooth-transition z-20"
+            className="absolute top-4 right-24 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold text-gray-600 shadow-md hover:bg-gray-100 smooth-transition z-20"
         >
             {language === 'ko' ? 'EN' : '한국어'}
         </button>
+    );
+};
+
+const UserInfo: React.FC = () => {
+    const { currentUser, logout } = useAuth();
+    
+    return (
+        <div className="absolute top-4 right-4 flex items-center gap-3 z-20">
+            <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold text-gray-700 shadow-md">
+                {currentUser?.email || currentUser?.displayName || '사용자'}
+            </div>
+            <button
+                onClick={logout}
+                className="bg-red-500/80 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold text-white shadow-md hover:bg-red-600 smooth-transition"
+            >
+                로그아웃
+            </button>
+        </div>
     );
 };
 
@@ -37,6 +56,7 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 const App: React.FC = () => {
+  const { currentUser } = useAuth();
   const [view, setView] = useState<View>('landing');
   const [analyses, setAnalyses] = useState<StoredAnalysis[]>([]);
   const [currentAnalysis, setCurrentAnalysis] = useState<StoredAnalysis | null>(null);
@@ -193,9 +213,20 @@ const App: React.FC = () => {
     }
   };
 
+  // 로그인하지 않은 경우 LandingPage 표시 (LandingPage에서 Google 로그인 처리)
+  if (!currentUser) {
+    return (
+      <>
+        <LanguageToggle />
+        <LandingPage onStart={() => setView('map')} />
+      </>
+    );
+  }
+
   return (
     <>
       <LanguageToggle />
+      <UserInfo />
       {renderContent()}
     </>
   );
