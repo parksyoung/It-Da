@@ -29,6 +29,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   const loginWithGoogle = async (): Promise<void> => {
+    if (!auth) {
+      throw new Error('Firebase Auth is not initialized. Please refresh the page.');
+    }
+    if (!googleProvider) {
+      throw new Error('Google Auth Provider is not initialized. Please refresh the page.');
+    }
+    
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error: any) {
@@ -36,11 +43,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (error.code === 'auth/invalid-api-key') {
         throw new Error('Firebase API 키가 유효하지 않습니다. .env.local 파일을 확인하세요.');
       }
+      if (error.code === 'auth/popup-closed-by-user') {
+        throw new Error('로그인 팝업이 닫혔습니다. 다시 시도해주세요.');
+      }
+      if (error.code === 'auth/popup-blocked') {
+        throw new Error('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+      }
       throw error;
     }
   };
 
   const logout = async (): Promise<void> => {
+    if (!auth) {
+      console.warn('Firebase Auth is not initialized. Cannot logout.');
+      return;
+    }
+    
     try {
       await signOut(auth);
     } catch (error) {
@@ -50,6 +68,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   useEffect(() => {
+    if (!auth) {
+      console.error('Firebase Auth is not initialized');
+      setLoading(false);
+      return;
+    }
+    
     try {
       const unsubscribe = onAuthStateChanged(
         auth,
@@ -68,7 +92,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       return unsubscribe;
     } catch (error) {
-      console.error('Firebase 초기화 오류:', error);
+      console.error('Firebase Auth 상태 감지 오류:', error);
       setLoading(false);
     }
   }, []);

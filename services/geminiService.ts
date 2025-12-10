@@ -111,7 +111,15 @@ const analysisSchema = {
 };
 
 
-export const analyzeChat = async (chatText: string, mode: RelationshipMode, language: 'ko' | 'en'): Promise<AnalysisResult> => {
+/**
+ * Analyzes a conversation history string and returns analysis results.
+ * This function takes the entire conversation history (accumulated conversations) as input.
+ * @param historyString - The complete conversation history as a string
+ * @param mode - The relationship mode (WORK, ROMANCE, FRIEND, OTHER)
+ * @param language - The language for the output ('ko' or 'en')
+ * @returns Promise<AnalysisResult> - The analysis results
+ */
+export const analyzeConversation = async (historyString: string, mode: RelationshipMode, language: 'ko' | 'en'): Promise<AnalysisResult> => {
   const prompt = `
     You are a world-class relationship analysis AI named 'It-Da'. Your task is to analyze a conversation text and provide a structured JSON output based on the provided schema. The analysis must be objective, data-driven, and insightful.
 
@@ -122,21 +130,22 @@ export const analyzeChat = async (chatText: string, mode: RelationshipMode, lang
     Here is the analysis context:
     - Relationship Mode: ${mode}
     - Your analysis should reflect the nuances of this specific relationship type.
+    - This conversation history may contain multiple conversation sessions accumulated over time. Analyze the entire history to provide comprehensive insights.
 
     Please perform the following analysis:
-    1.  **Intimacy Score (친밀도):** Calculate a score from 0-100.
-    2.  **Balance Ratio (균형):** Calculate the percentage of total message volume for each speaker.
-    3.  **Sentiment (감정 톤):** Analyze the overall emotional tone and provide percentages for positive, negative, and neutral sentiments.
+    1.  **Intimacy Score (친밀도):** Calculate a score from 0-100 based on the entire conversation history.
+    2.  **Balance Ratio (균형):** Calculate the percentage of total message volume for each speaker across all conversations.
+    3.  **Sentiment (감정 톤):** Analyze the overall emotional tone and provide percentages for positive, negative, and neutral sentiments across all conversations.
     4.  **Average Response Time (평균 응답 시간):** Calculate the average time in minutes for each person to respond. If timestamps are not present, return null for time values.
-    5.  **Summary (요약):** Provide a short summary of the relationship's state.
-    6.  **Recommendation (추천):** Give one concrete, actionable piece of advice.
+    5.  **Summary (요약):** Provide a short summary of the relationship's state based on the entire conversation history.
+    6.  **Recommendation (추천):** Give one concrete, actionable piece of advice based on the overall relationship dynamic.
     7.  **Sentiment Flow (감정 흐름):** Analyze the conversation chronologically and provide an array of sentiment scores over time. Generate exactly 20 data points, evenly spaced from time_percentage 0 to 100. Each data point should have a 'time_percentage' (0-100) and a 'sentiment_score' (-1 to 1).
     8.  **Response Heatmap (응답 패턴 히트맵):** Analyze message timestamps if available. Provide an array of exactly 24 numbers, where each index (0-23) represents an hour of the day and its value is the total message count for that hour. If there are no timestamps, return an array of 24 zeros.
     9.  **Next Conversation Suggestions:** Based on the last few messages, provide an array of 2-3 potential replies to the last message, and an array of 2-3 interesting topics to discuss next. If the conversation seems concluded, focus on new topics.
 
-    Conversation to analyze:
+    Conversation history to analyze:
     ---
-    ${chatText}
+    ${historyString}
     ---
   `;
 
@@ -154,9 +163,18 @@ export const analyzeChat = async (chatText: string, mode: RelationshipMode, lang
     return JSON.parse(jsonString) as AnalysisResult;
 
   } catch (error) {
-    console.error("Error analyzing chat:", error);
+    console.error("Error analyzing conversation:", error);
     throw new Error("Failed to analyze the conversation. The AI model might be experiencing issues.");
   }
+};
+
+/**
+ * Legacy function for backward compatibility.
+ * Analyzes a single chat text (not accumulated history).
+ * @deprecated Use analyzeConversation instead for accumulated history analysis.
+ */
+export const analyzeChat = async (chatText: string, mode: RelationshipMode, language: 'ko' | 'en'): Promise<AnalysisResult> => {
+  return analyzeConversation(chatText, mode, language);
 };
 
 

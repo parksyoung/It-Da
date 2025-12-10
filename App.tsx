@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { AnalysisResult, RelationshipMode, StoredAnalysis } from './types';
 import { RELATIONSHIP_THEMES } from './constants';
-import { analyzeChat, extractTextFromImage } from './services/geminiService';
-import { getAllAnalyses, saveAnalysis } from './services/storageService';
+import { analyzeConversation, extractTextFromImage } from './services/geminiService';
+import { getPersonData, savePersonData } from './services/firebase';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import LandingPage from './components/LandingPage';
 import RelationshipMap from './components/RelationshipMap';
@@ -68,37 +68,115 @@ const App: React.FC = () => {
   
   const { language, t } = useLanguage();
 
+  // Firestore에서 모든 분석 데이터 로드
+  const loadAnalysesFromFirestore = async () => {
+    if (!currentUser?.uid) return;
+
+    try {
+      const { getAllPersonsAsAnalyses } = await import('./services/firebase');
+      const loadedAnalyses = await getAllPersonsAsAnalyses();
+      setAnalyses(loadedAnalyses);
+    } catch (err: any) {
+      console.error('[App] Failed to load analyses from Firestore:', err);
+      // 오프라인 오류는 조용히 처리 (빈 배열 반환)
+      if (err?.message?.includes('offline') || err?.code === 'unavailable') {
+        console.warn('[App] Firestore is offline. Using cached data if available.');
+        setAnalyses([]);
+        return;
+      }
+      // 권한 오류는 사용자에게 알림
+      if (err?.message?.includes('Permission denied') || err?.code === 'permission-denied') {
+        console.error('[App] Firestore permission denied. Check security rules.');
+        setAnalyses([]);
+        return;
+      }
+      // 기타 오류
+      setAnalyses([]);
+    }
+  };
+
   useEffect(() => {
-    // Load existing analyses from storage on initial load
-    setAnalyses(getAllAnalyses());
-  }, []);
+    if (currentUser) {
+      loadAnalysesFromFirestore();
+    }
+  }, [currentUser]);
 
   const handleNewAnalysis = async (chatText: string, mode: RelationshipMode, speaker1Name: string, speaker2Name: string) => {
     if (!chatText.trim()) {
       setError(t('errorInputRequired'));
       return;
     }
+
+    if (!currentUser?.uid) {
+      setError('로그인이 필요합니다.');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await analyzeChat(chatText, mode, language);
+      const personName = speaker2Name; // 상대방 이름을 personName으로 사용
+      
+      // 1. Firestore에서 기존 히스토리 가져오기
+      const existingData = await getPersonData(personName);
+      
+      // 2. 새 대화를 히스토리에 추가
+      const updatedHistory = existingData 
+        ? [...existingData.history, chatText]
+        : [chatText];
+      
+      // 3. 전체 히스토리를 하나의 문자열로 합치기
+      const historyString = updatedHistory.join('\n\n---\n\n');
+      
+      // 4. 전체 히스토리를 기반으로 재분석
+      const result = await analyzeConversation(historyString, mode, language);
+      
+      // 5. Firestore에 업데이트된 히스토리와 분석 결과 저장
+      await savePersonData(personName, {
+        history: updatedHistory,
+        analysis: result,
+        mode,
+      });
+      
+      // 6. RelationshipMap 업데이트를 위해 analyses 상태 갱신
+      await loadAnalysesFromFirestore();
+      
+      // 7. 대시보드에 표시할 현재 분석 결과 설정
       const newAnalysis: StoredAnalysis = {
-        id: new Date().toISOString(),
+        id: `${currentUser.uid}-${personName}`,
         date: new Date().toISOString(),
         mode,
         speaker1Name,
         speaker2Name,
         result
       };
-      saveAnalysis(newAnalysis);
-      setAnalyses(getAllAnalyses()); // Re-fetch all analyses to update the map
-      setView('map'); // Go back to map after successful analysis
+      setCurrentAnalysis(newAnalysis);
       setPrefilledData(null); // Clear prefilled data
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+      setView('dashboard'); // 분석 결과 페이지로 이동
+    } catch (err: any) {
+      let errorMessage = '알 수 없는 오류가 발생했습니다.';
+      
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      // 사용자 친화적인 에러 메시지로 변환
+      if (errorMessage.includes('offline') || errorMessage.includes('internet connection')) {
+        errorMessage = '인터넷 연결을 확인해주세요. Firestore가 오프라인 상태입니다.';
+      } else if (errorMessage.includes('Permission denied') || errorMessage.includes('permission')) {
+        errorMessage = '데이터 접근 권한이 없습니다. Firestore 보안 규칙을 확인해주세요.';
+      } else if (errorMessage.includes('not authenticated') || errorMessage.includes('로그인이 필요')) {
+        errorMessage = '로그인이 필요합니다. 다시 로그인해주세요.';
+      } else if (errorMessage.includes('Failed to analyze')) {
+        errorMessage = '대화 분석에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      }
+      
+      console.error('[App] Analysis error:', err);
       setError(errorMessage);
-       // Stay on the input page if there's an error
+      // Stay on the input page if there's an error
     } finally {
       setIsLoading(false);
     }
@@ -125,8 +203,32 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSelectAnalysis = (analysis: StoredAnalysis) => {
-    setCurrentAnalysis(analysis);
+  const handleSelectAnalysis = async (analysis: StoredAnalysis) => {
+    // Firestore에서 최신 분석 데이터 가져오기
+    try {
+      const personName = analysis.speaker2Name;
+      const personData = await getPersonData(personName);
+      
+      if (personData) {
+        // 최신 분석 결과로 업데이트
+        const updatedAnalysis: StoredAnalysis = {
+          ...analysis,
+          result: personData.analysis,
+        };
+        setCurrentAnalysis(updatedAnalysis);
+      } else {
+        // 데이터가 없으면 기존 분석 사용
+        setCurrentAnalysis(analysis);
+      }
+    } catch (err: any) {
+      console.error('[App] Failed to load latest analysis:', err);
+      // 오프라인 오류는 조용히 처리 (기존 분석 사용)
+      if (err?.message?.includes('offline') || err?.code === 'unavailable') {
+        console.warn('[App] Firestore is offline. Using cached analysis data.');
+      }
+      // 에러 발생 시 기존 분석 사용
+      setCurrentAnalysis(analysis);
+    }
     setView('dashboard');
   };
 
