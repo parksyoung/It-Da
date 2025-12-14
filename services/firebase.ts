@@ -201,6 +201,114 @@ export const getPersonData = async (personName: string): Promise<PersonData | nu
   }
 };
 
+export type CounselMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+export const getCounselMessages = async (personName: string): Promise<CounselMessage[]> => {
+  if (!db) {
+    throw new Error('Firestore is not initialized');
+  }
+
+  try {
+    const userId = getCurrentUserId();
+    const personRef = doc(db, 'users', userId, 'persons', personName);
+    const personSnap = await getDoc(personRef);
+    if (!personSnap.exists()) return [];
+    const data = personSnap.data();
+    const raw = (data as any)?.counselMessages;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((m: any) => m && typeof m.id === 'string' && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+      .map((m: any) => ({ id: m.id, role: m.role, content: m.content }));
+  } catch (error: any) {
+    if (error instanceof Error && (
+      error.message === 'User is not authenticated' ||
+      error.message === 'Firebase Auth is not initialized'
+    )) {
+      throw error;
+    }
+
+    const userId = auth?.currentUser?.uid || 'unknown';
+    console.error('[Firestore] Failed to get counsel messages', {
+      userId,
+      personName,
+      error: error?.message || error,
+      code: error?.code,
+      stack: error?.stack,
+    });
+
+    if (error?.code === 'failed-precondition') {
+      throw errorWithCode('Firestore Database가 아직 생성/활성화되지 않았습니다. Firebase Console에서 Firestore Database를 생성한 뒤 다시 시도해주세요.', error?.code);
+    }
+
+    if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
+      throw errorWithCode('Firestore is offline. Please check your internet connection.', error?.code);
+    }
+
+    if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+      throw errorWithCode('Permission denied. Please check Firestore security rules.', error?.code);
+    }
+
+    if (error?.code === 'unauthenticated') {
+      throw errorWithCode('User is not authenticated. Please sign in and try again.', error?.code);
+    }
+
+    throw new Error(`Failed to retrieve counsel messages from Firestore: ${error?.message || 'Unknown error'}`);
+  }
+};
+
+export const saveCounselMessages = async (personName: string, messages: CounselMessage[]): Promise<void> => {
+  if (!db) {
+    throw new Error('Firestore is not initialized');
+  }
+
+  try {
+    const userId = getCurrentUserId();
+    const personRef = doc(db, 'users', userId, 'persons', personName);
+    await setDoc(personRef, {
+      counselMessages: messages,
+      counselUpdatedAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (error: any) {
+    if (error instanceof Error && (
+      error.message === 'User is not authenticated' ||
+      error.message === 'Firebase Auth is not initialized'
+    )) {
+      throw error;
+    }
+
+    const userId = auth?.currentUser?.uid || 'unknown';
+    console.error('[Firestore] Failed to save counsel messages', {
+      userId,
+      personName,
+      error: error?.message || error,
+      code: error?.code,
+      stack: error?.stack,
+    });
+
+    if (error?.code === 'failed-precondition') {
+      throw errorWithCode('Firestore Database가 아직 생성/활성화되지 않았습니다. Firebase Console에서 Firestore Database를 생성한 뒤 다시 시도해주세요.', error?.code);
+    }
+
+    if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
+      throw errorWithCode('Firestore is offline. Please check your internet connection.', error?.code);
+    }
+
+    if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+      throw errorWithCode('Permission denied. Please check Firestore security rules.', error?.code);
+    }
+
+    if (error?.code === 'unauthenticated') {
+      throw errorWithCode('User is not authenticated. Please sign in and try again.', error?.code);
+    }
+
+    throw new Error(`Failed to save counsel messages to Firestore: ${error?.message || 'Unknown error'}`);
+  }
+};
+
 /**
  * Extended PersonData that includes mode for Firestore storage
  */

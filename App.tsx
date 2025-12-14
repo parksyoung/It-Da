@@ -1,12 +1,12 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { AnalysisResult, RelationshipMode, StoredAnalysis } from './types';
-import { RELATIONSHIP_THEMES } from './constants';
+import React, { useState, useEffect } from 'react';
+import { RelationshipMode, StoredAnalysis } from './types';
 import { analyzeConversation, extractTextFromImage } from './services/geminiService';
-import { getPersonData, savePersonData } from './services/firebase';
+import { deletePerson, getPersonData, savePersonData } from './services/firebase';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import LandingPage from './components/LandingPage';
 import RelationshipMap from './components/RelationshipMap';
 import SelfAnalysis from './components/SelfAnalysis';
+
 import { HeartIcon, MapIcon, SparklesIcon, ArrowLeftIcon, PlusIcon, UserIcon } from './components/icons';
 import { useLanguage } from './contexts/LanguageContext';
 import { useAuth } from './contexts/AuthContext';
@@ -28,7 +28,7 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 const App: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [view, setView] = useState<View>('landing');
   const [analyses, setAnalyses] = useState<StoredAnalysis[]>([]);
   const [currentAnalysis, setCurrentAnalysis] = useState<StoredAnalysis | null>(null);
@@ -36,13 +36,12 @@ const App: React.FC = () => {
   const [isCreatingNewPerson, setIsCreatingNewPerson] = useState(false); // Track if we're creating a new person vs adding to existing
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('analysis');
   const [currentHistory, setCurrentHistory] = useState<string[]>([]);
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const { language, t, setLanguage } = useLanguage();
-  const { logout } = useAuth();
 
   const toggleLanguage = () => setLanguage(language === 'ko' ? 'en' : 'ko');
 
@@ -56,19 +55,16 @@ const App: React.FC = () => {
       setAnalyses(loadedAnalyses);
     } catch (err: any) {
       console.error('[App] Failed to load analyses from Firestore:', err);
-      // 오프라인 오류는 조용히 처리 (빈 배열 반환)
       if (err?.message?.includes('offline') || err?.code === 'unavailable') {
         console.warn('[App] Firestore is offline. Using cached data if available.');
         setAnalyses([]);
         return;
       }
-      // 권한 오류는 사용자에게 알림
       if (err?.message?.includes('Permission denied') || err?.code === 'permission-denied') {
         console.error('[App] Firestore permission denied. Check security rules.');
         setAnalyses([]);
         return;
       }
-      // 기타 오류
       setAnalyses([]);
     }
   };
@@ -189,14 +185,13 @@ const App: React.FC = () => {
     } catch (err: any) {
       let errorMessage = '알 수 없는 오류가 발생했습니다.';
       const errorCode = err?.code;
-      
+
       if (err instanceof Error) {
         errorMessage = err.message;
       } else if (typeof err === 'string') {
         errorMessage = err;
       }
-      
-      // 사용자 친화적인 에러 메시지로 변환
+
       if (errorMessage.includes('offline') || errorMessage.includes('internet connection')) {
         errorMessage = '인터넷 연결을 확인해주세요. Firestore가 오프라인 상태입니다.';
       } else if (errorMessage.includes('Permission denied') || errorMessage.includes('permission')) {
@@ -210,15 +205,14 @@ const App: React.FC = () => {
       if (errorCode) {
         errorMessage = `${errorMessage} (code: ${errorCode})`;
       }
-      
+
       console.error('[App] Analysis error:', err);
       setError(errorMessage);
-      // Stay on the input page if there's an error
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, onTextExtracted: (text: string) => void) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -261,17 +255,14 @@ const App: React.FC = () => {
         setCurrentAnalysis(updatedAnalysis);
         setCurrentHistory(personData.history || []);
       } else {
-        // 데이터가 없으면 기존 분석 사용
         setCurrentAnalysis(analysis);
         setCurrentHistory([]);
       }
     } catch (err: any) {
       console.error('[App] Failed to load latest analysis:', err);
-      // 오프라인 오류는 조용히 처리 (기존 분석 사용)
       if (err?.message?.includes('offline') || err?.code === 'unavailable') {
         console.warn('[App] Firestore is offline. Using cached analysis data.');
       }
-      // 에러 발생 시 기존 분석 사용
       setCurrentAnalysis(analysis);
       setCurrentHistory([]);
     }
@@ -299,6 +290,38 @@ const App: React.FC = () => {
     setView('input');
   };
 
+  const handleDeleteAnalysis = async (analysis: StoredAnalysis) => {
+    if (!currentUser?.uid) {
+      setError('로그인이 필요합니다.');
+      return;
+    }
+
+    const uidPrefix = `${currentUser.uid}-`;
+    const personKey = analysis.id?.startsWith(uidPrefix) ? analysis.id.slice(uidPrefix.length) : analysis.speaker2Name;
+
+    try {
+      // Optimistic UI update (RelationshipMap + Recent)
+      setAnalyses((prev) => prev.filter((a) => a.id !== analysis.id));
+
+      await deletePerson(personKey);
+      await loadAnalysesFromFirestore();
+
+      if (currentAnalysis?.speaker2Name === analysis.speaker2Name) {
+        setCurrentAnalysis(null);
+        setCurrentHistory([]);
+        setView('map');
+      }
+    } catch (err: any) {
+      console.error('[App] Failed to delete person:', err);
+      const message = err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다.';
+      setError(message);
+
+      // Roll back by reloading authoritative data
+      await loadAnalysesFromFirestore();
+      window.alert(message);
+    }
+  };
+
   const sortedAnalyses = [...analyses].sort((a, b) => {
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
@@ -319,6 +342,7 @@ const App: React.FC = () => {
                 setView('input');
               }}
               onSelect={handleSelectAnalysis}
+              onDelete={handleDeleteAnalysis}
               onBack={() => setView('landing')}
               embedded
               showBackButton={false}
@@ -413,6 +437,7 @@ const App: React.FC = () => {
               <AnalysisDashboard
                 result={currentAnalysis.result}
                 mode={currentAnalysis.mode}
+                chatHistory={currentHistory}
               />
             ) : (
               <CounselChat

@@ -28,7 +28,8 @@ export interface AnalysisResult {
   }[];
   responseHeatmap: number[]; // 24-hour array
   suggestedReplies: string[];
-  suggestedTopics: string[];
+  attentionPoints: string[]; // 주의할 포인트 (2-3개)
+  suggestedTopics: string[]; // 대화 주제 추천 (3개 내외)
 }
 
 export interface SimulationParams {

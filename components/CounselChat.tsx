@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { RelationshipMode } from '../types';
 import { counselConversation } from '../services/geminiService';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getCounselMessages, saveCounselMessages } from '../services/firebase';
 
 type ChatRole = 'user' | 'assistant';
 
@@ -20,16 +21,18 @@ interface CounselChatProps {
 
 const CounselChat: React.FC<CounselChatProps> = ({ history, mode, speaker1Name, speaker2Name }) => {
   const { language } = useLanguage();
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    {
+  const welcomeMessage = useMemo<ChatMessage>(() => {
+    return {
       id: 'welcome',
       role: 'assistant',
       content:
         language === 'ko'
           ? `${speaker2Name}님과의 누적 대화를 바탕으로, 고민을 자유롭게 적어주면 같이 정리해볼게요. (예: “이 상황에서 뭐라고 답장할까?”, “요즘 분위기가 왜 이런 것 같아?”)`
           : `Ask anything about your conversations with ${speaker2Name}. I’ll use your accumulated chat history to help you think through it.`,
-    },
-  ]);
+    };
+  }, [language, speaker2Name]);
+
+  const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +40,28 @@ const CounselChat: React.FC<CounselChatProps> = ({ history, mode, speaker1Name, 
   const historyString = useMemo(() => {
     return (history || []).join('\n\n---\n\n');
   }, [history]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const stored = await getCounselMessages(speaker2Name);
+        if (cancelled) return;
+        const restored: ChatMessage[] = stored.map((m) => ({ id: m.id, role: m.role, content: m.content }));
+        setMessages([welcomeMessage, ...restored]);
+      } catch (e: any) {
+        if (cancelled) return;
+        console.error('[CounselChat] Failed to load counsel messages:', e);
+        setMessages([welcomeMessage]);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [speaker2Name, welcomeMessage]);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -51,8 +76,16 @@ const CounselChat: React.FC<CounselChatProps> = ({ history, mode, speaker1Name, 
       content: text,
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    const base = messages.filter((m) => m.id !== 'welcome');
+    const afterUser = [...base, userMsg];
+    setMessages([welcomeMessage, ...afterUser]);
     setInput('');
+
+    try {
+      await saveCounselMessages(speaker2Name, afterUser.map((m) => ({ id: m.id, role: m.role, content: m.content })));
+    } catch (e: any) {
+      console.warn('[CounselChat] Failed to persist user message:', e);
+    }
 
     try {
       const answer = await counselConversation(historyString, text, mode, language as any, speaker1Name, speaker2Name);
@@ -61,7 +94,14 @@ const CounselChat: React.FC<CounselChatProps> = ({ history, mode, speaker1Name, 
         role: 'assistant',
         content: answer,
       };
-      setMessages((prev) => [...prev, aiMsg]);
+      const afterAi = [...afterUser, aiMsg];
+      setMessages([welcomeMessage, ...afterAi]);
+
+      try {
+        await saveCounselMessages(speaker2Name, afterAi.map((m) => ({ id: m.id, role: m.role, content: m.content })));
+      } catch (e: any) {
+        console.warn('[CounselChat] Failed to persist assistant message:', e);
+      }
     } catch (e: any) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

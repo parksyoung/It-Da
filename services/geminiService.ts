@@ -100,13 +100,18 @@ const analysisSchema = {
       description: 'An array of 2-3 concise, potential replies to the last message in the conversation.',
       items: { type: Type.STRING }
     },
+    attentionPoints: {
+      type: Type.ARRAY,
+      description: 'An array of 2-3 specific points to be cautious about in this relationship, based on the conversation analysis. Each point should be a short, advisory sentence.',
+      items: { type: Type.STRING }
+    },
     suggestedTopics: {
       type: Type.ARRAY,
-      description: 'An array of 2-3 interesting topics to discuss next, based on the conversation.',
+      description: 'An array of 3-4 conversation topics that naturally flow at the current relationship stage. Each topic should be a short, engaging phrase suitable for the relationship type (romance/friend/work). Topics should be based on the actual conversation content and relationship dynamics.',
       items: { type: Type.STRING }
     }
   },
-  required: ['intimacyScore', 'balanceRatio', 'sentiment', 'avgResponseTime', 'summary', 'recommendation', 'sentimentFlow', 'responseHeatmap', 'suggestedReplies', 'suggestedTopics'],
+  required: ['intimacyScore', 'balanceRatio', 'sentiment', 'avgResponseTime', 'summary', 'recommendation', 'sentimentFlow', 'responseHeatmap', 'suggestedReplies', 'attentionPoints', 'suggestedTopics'],
 };
 
 
@@ -122,7 +127,7 @@ export const analyzeConversation = async (historyString: string, mode: Relations
   const prompt = `
     You are a world-class relationship analysis AI named 'It-Da'. Your task is to analyze a conversation text and provide a structured JSON output based on the provided schema. The analysis must be objective, data-driven, and insightful.
 
-    **IMPORTANT: The entire JSON output, including all text fields like 'summary', 'recommendation', 'suggestedReplies', and 'suggestedTopics', MUST be in ${language === 'ko' ? 'Korean' : 'English'}.**
+    **IMPORTANT: The entire JSON output, including all text fields like 'summary', 'recommendation', 'suggestedReplies', 'attentionPoints', and 'suggestedTopics', MUST be in ${language === 'ko' ? 'Korean' : 'English'}.**
 
     The conversation is between two people. First, identify the two main speakers from the chat log. The format is typically 'Name: Message'.
 
@@ -140,7 +145,9 @@ export const analyzeConversation = async (historyString: string, mode: Relations
     6.  **Recommendation (추천):** Give one concrete, actionable piece of advice based on the overall relationship dynamic.
     7.  **Sentiment Flow (감정 흐름):** Analyze the conversation chronologically and provide an array of sentiment scores over time. Generate exactly 20 data points, evenly spaced from time_percentage 0 to 100. Each data point should have a 'time_percentage' (0-100) and a 'sentiment_score' (-1 to 1).
     8.  **Response Heatmap (응답 패턴 히트맵):** Analyze message timestamps if available. Provide an array of exactly 24 numbers, where each index (0-23) represents an hour of the day and its value is the total message count for that hour. If there are no timestamps, return an array of 24 zeros.
-    9.  **Next Conversation Suggestions:** Based on the last few messages, provide an array of 2-3 potential replies to the last message, and an array of 2-3 interesting topics to discuss next. If the conversation seems concluded, focus on new topics.
+    9.  **Next Conversation Suggestions:** Based on the last few messages, provide an array of 2-3 potential replies to the last message.
+    10. **Attention Points (주의할 포인트):** Based on the conversation analysis, provide an array of 2-3 specific points to be cautious about in this relationship. Each point should be a short, advisory sentence that helps maintain or improve the relationship. Focus on communication patterns, emotional dynamics, or potential misunderstandings observed in the conversation.
+    11. **Suggested Topics (대화 주제 추천):** Based on the conversation history and current relationship stage, provide an array of 3-4 conversation topics that naturally flow at this relationship stage. Each topic should be a short, engaging phrase (not a full sentence) that fits the relationship type. For romance mode, suggest topics that help deepen the relationship. For friend mode, suggest casual, friendly topics. For work mode, suggest professional but warm topics.
 
     Conversation history to analyze:
     ---
