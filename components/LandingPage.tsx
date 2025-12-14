@@ -35,19 +35,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             await loginWithGoogle();
             onStart();
         } catch (err: any) {
-            let errorMessage = 'Google 로그인에 실패했습니다.';
+            let errorMessage = t('googleLoginFailed');
 
             const code = err?.code;
             const message = err instanceof Error ? err.message : err?.message;
 
             if (code === 'auth/popup-closed-by-user') {
-                errorMessage = '로그인 팝업이 닫혔습니다.';
+                errorMessage = t('popupClosed');
             } else if (code === 'auth/popup-blocked') {
-                errorMessage = '팝업이 차단되었습니다. 브라우저 설정을 확인해주세요.';
+                errorMessage = t('popupBlocked');
             } else if (code === 'auth/unauthorized-domain') {
-                errorMessage = '허용되지 않은 도메인에서 로그인 시도했습니다. Firebase Authorized domains에 localhost를 추가해야 합니다.';
+                errorMessage = t('unauthorizedDomain');
             } else if (code === 'auth/operation-not-allowed') {
-                errorMessage = 'Firebase에서 Google 로그인이 비활성화되어 있습니다. Authentication > Sign-in method에서 Google을 활성화하세요.';
+                errorMessage = t('googleSignInDisabled');
             } else if (message) {
                 errorMessage = message;
             }
@@ -82,7 +82,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                 </div>
 
                 <h1 className="mt-6 text-5xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-pink-500 via-fuchsia-500 to-violet-600 pb-2">It-Da</h1>
-                <p className="text-xl md:text-2xl font-semibold text-gray-700 mt-2">관계를 더 다정하게, 더 똑똑하게</p>
+                <p className="text-xl md:text-2xl font-semibold text-gray-700 mt-2">{t('relationshipSmarter')}</p>
                 <p className="mt-6 text-lg text-gray-700 max-w-2xl mx-auto">{t('landingTitle')}</p>
                 
                 {!currentUser ? (
@@ -110,7 +110,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                                 />
                             </svg>
-                            {isLoading ? '로그인 중...' : 'Google로 시작하기'}
+                            {isLoading ? t('loggingIn') : t('startWithGoogle')}
                         </button>
                         {error && (
                             <div className="itda-alert itda-alert-error max-w-md w-full text-sm">
@@ -129,13 +129,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                         </button>
                         <div className="flex items-center gap-3">
                             <span className="text-sm text-gray-600">
-                                {currentUser.displayName || currentUser.email}으로 로그인됨
+                                {t('loggedInAs', { name: currentUser.displayName || currentUser.email })}
                             </span>
                             <button
                                 onClick={logout}
                                 className="text-sm text-red-500 hover:text-red-700 font-medium"
                             >
-                                로그아웃
+                                {t('logout')}
                             </button>
                         </div>
                     </div>

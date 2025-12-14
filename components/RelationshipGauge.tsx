@@ -26,11 +26,10 @@ const RelationshipGauge: React.FC<RelationshipGaugeProps> = ({ score, mode }) =>
   return (
     <div className={`relative w-64 h-64 rounded-full flex items-center justify-center p-4 shadow-lg ${theme.light} smooth-transition`}>
       <svg className="w-full h-full" viewBox="0 0 100 100">
-        {/* Background circle */}
+        {/* Background circle - very subtle, desaturated ring with low saturation and high lightness */}
         <circle
-          className="text-gray-200"
           strokeWidth="10"
-          stroke="currentColor"
+          stroke="hsla(0, 0%, 92%, 0.2)"
           fill="transparent"
           r="45"
           cx="50"

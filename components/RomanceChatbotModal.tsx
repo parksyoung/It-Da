@@ -34,9 +34,7 @@ const RomanceChatbotModal: React.FC<RomanceChatbotModalProps> = ({ isOpen, onClo
       const response = await askRelationshipCoach(userMessage, result, mode, language);
       setMessages((prev) => [...prev, { role: 'assistant', content: response }]);
     } catch (error: any) {
-      const errorMessage = error.message || (language === 'ko' 
-        ? '답변을 생성하는 중 오류가 발생했습니다.' 
-        : 'An error occurred while generating a response.');
+      const errorMessage = error.message || t('romanceChatbotError');
       setMessages((prev) => [...prev, { 
         role: 'assistant', 
         content: errorMessage 
@@ -67,9 +65,7 @@ const RomanceChatbotModal: React.FC<RomanceChatbotModalProps> = ({ isOpen, onClo
           {messages.length === 0 && (
             <div className="text-center text-gray-500 py-8">
               <p className="text-sm">
-                {language === 'ko' 
-                  ? '관계에 대해 궁금한 것을 물어보세요.'
-                  : 'Ask anything about your relationship.'}
+                {t('romanceChatbotPlaceholder')}
               </p>
             </div>
           )}

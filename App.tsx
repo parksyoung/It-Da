@@ -104,7 +104,7 @@ const App: React.FC = () => {
     }
 
     if (!currentUser?.uid) {
-      setError('로그인이 필요합니다.');
+      setError(t('loginRequired'));
       return;
     }
 
@@ -124,7 +124,7 @@ const App: React.FC = () => {
         if (existingData) {
           // Person with this name already exists - this should not happen
           // User should use "추가 대화 분석하기" to add conversation to existing person
-          throw new Error(`이미 "${personName}"이라는 이름의 사람이 존재합니다. 기존 사람에게 대화를 추가하려면 해당 사람의 분석 페이지에서 "추가 대화 분석하기" 버튼을 사용해주세요.`);
+          throw new Error(t('personAlreadyExists', { name: personName }));
         }
         
         // Create new person with initial conversation (fresh start)
@@ -183,7 +183,7 @@ const App: React.FC = () => {
       setIsCreatingNewPerson(false); // Reset flag
       setView('dashboard'); // Navigate to analysis results
     } catch (err: any) {
-      let errorMessage = '알 수 없는 오류가 발생했습니다.';
+      let errorMessage = t('unknownError');
       const errorCode = err?.code;
 
       if (err instanceof Error) {
@@ -193,13 +193,13 @@ const App: React.FC = () => {
       }
 
       if (errorMessage.includes('offline') || errorMessage.includes('internet connection')) {
-        errorMessage = '인터넷 연결을 확인해주세요. Firestore가 오프라인 상태입니다.';
+        errorMessage = t('checkInternetConnection');
       } else if (errorMessage.includes('Permission denied') || errorMessage.includes('permission')) {
-        errorMessage = '데이터 접근 권한이 없습니다. Firestore 보안 규칙을 확인해주세요.';
-      } else if (errorMessage.includes('not authenticated') || errorMessage.includes('로그인이 필요')) {
-        errorMessage = '로그인이 필요합니다. 다시 로그인해주세요.';
+        errorMessage = t('noDataAccess');
+      } else if (errorMessage.includes('not authenticated') || errorMessage.includes('로그인이 필요') || errorMessage.includes('login required')) {
+        errorMessage = t('loginRequiredRetry');
       } else if (errorMessage.includes('Failed to analyze')) {
-        errorMessage = '대화 분석에 실패했습니다. 잠시 후 다시 시도해주세요.';
+        errorMessage = t('analysisFailed');
       }
 
       if (errorCode) {
@@ -292,7 +292,7 @@ const App: React.FC = () => {
 
   const handleDeleteAnalysis = async (analysis: StoredAnalysis) => {
     if (!currentUser?.uid) {
-      setError('로그인이 필요합니다.');
+      setError(t('loginRequired'));
       return;
     }
 
@@ -313,7 +313,7 @@ const App: React.FC = () => {
       }
     } catch (err: any) {
       console.error('[App] Failed to delete person:', err);
-      const message = err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다.';
+      const message = err instanceof Error ? err.message : t('deleteError');
       setError(message);
 
       // Roll back by reloading authoritative data
@@ -332,7 +332,11 @@ const App: React.FC = () => {
         return <LandingPage onStart={() => setView('map')} />;
       case 'map':
         return (
-          <div className="itda-card p-4 md:p-6 h-full">
+          <div className="p-4 md:p-6 h-full relative" style={{ 
+            background: 'transparent',
+            border: 'none',
+            boxShadow: 'none',
+          }}>
             <RelationshipMap
               analyses={analyses}
               onAdd={(name, mode) => {
@@ -422,13 +426,13 @@ const App: React.FC = () => {
                   onClick={() => setDashboardTab('analysis')}
                   className={`itda-btn itda-btn-secondary px-4 py-2 text-sm ${dashboardTab === 'analysis' ? 'ring-2 ring-violet-200/60' : ''}`}
                 >
-                  분석
+                  {t('analysisTab')}
                 </button>
                 <button
                   onClick={() => setDashboardTab('counsel')}
                   className={`itda-btn itda-btn-secondary px-4 py-2 text-sm ${dashboardTab === 'counsel' ? 'ring-2 ring-violet-200/60' : ''}`}
                 >
-                  상담
+                  {t('counselTab')}
                 </button>
               </div>
             </div>
@@ -567,13 +571,13 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             <div className="itda-btn itda-btn-secondary px-4 py-2 text-sm">
-              {currentUser?.email || currentUser?.displayName || '사용자'}
+              {currentUser?.email || currentUser?.displayName || t('user')}
             </div>
             <button
               onClick={logout}
               className="itda-btn itda-btn-danger px-4 py-2 text-sm smooth-transition"
             >
-              로그아웃
+              {t('logout')}
             </button>
           </div>
         </header>

@@ -131,7 +131,7 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onAdd, onSe
 
   const handleDeletePerson = (analysis: StoredAnalysis) => {
     if (!onDelete) return;
-    const ok = window.confirm(`${analysis.speaker2Name}을(를) 삭제할까요?`);
+    const ok = window.confirm(t('deletePersonConfirm', { name: analysis.speaker2Name }));
     if (!ok) return;
     onDelete(analysis);
   };
@@ -199,13 +199,27 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onAdd, onSe
 
   return (
     <div className={embedded ? "w-full h-full min-h-0 p-2 md:p-4 fade-in overflow-hidden relative flex flex-col" : "min-h-screen w-full flex flex-col items-center justify-center p-4 fade-in overflow-hidden relative"}>
-        <h2 className={embedded ? "text-2xl md:text-3xl font-black mb-4" : "text-3xl font-bold text-gray-800 mb-4"}>{t('relationshipMapTitle')}</h2>
+        {/* Soft organic background layers - seamlessly blend with page */}
+        <div 
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{
+            background: `
+              radial-gradient(ellipse 1200px 800px at 20% 30%, rgba(197, 139, 215, 0.06) 0%, transparent 65%),
+              radial-gradient(ellipse 1000px 700px at 80% 70%, rgba(126, 162, 200, 0.05) 0%, transparent 60%),
+              radial-gradient(ellipse 1400px 900px at 50% 50%, rgba(139, 92, 246, 0.03) 0%, transparent 70%)
+            `,
+            filter: 'blur(40px)',
+            opacity: 0.8,
+          }}
+        />
+        
+        <h2 className={`${embedded ? "text-2xl md:text-3xl font-black mb-4" : "text-3xl font-bold text-gray-800 mb-4"} relative z-10`}>{t('relationshipMapTitle')}</h2>
         
         <div
-          className={embedded ? "relative mx-auto" : "relative mx-auto"}
+          className="relative mx-auto z-10"
           style={{ width: mapWidth, height: mapHeight }}
         >
-            <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" className="w-full h-full">
+            <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" className="w-full h-full" style={{ background: 'transparent' }}>
                 <defs>
                     <filter id="softShadow" x="-40%" y="-40%" width="180%" height="180%">
                       <feDropShadow dx="0" dy="18" stdDeviation="14" floodColor="rgba(31,22,53,0.16)" />
@@ -247,10 +261,23 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onAdd, onSe
                       <stop offset="100%" stopColor="rgba(167, 119, 92, 0.42)" />
                     </linearGradient>
 
-                    <radialGradient id="bg" cx="50%" cy="35%" r="85%">
-                      <stop offset="0%" stopColor="rgba(255,255,255,1)" />
-                      <stop offset="55%" stopColor="rgba(246,245,255,1)" />
-                      <stop offset="100%" stopColor="rgba(238,236,255,1)" />
+                    {/* Soft organic background gradients - no hard boundaries */}
+                    <radialGradient id="bgBlob1" cx="25%" cy="25%" r="45%">
+                      <stop offset="0%" stopColor="rgba(197, 139, 215, 0.12)" />
+                      <stop offset="50%" stopColor="rgba(197, 139, 215, 0.04)" />
+                      <stop offset="100%" stopColor="rgba(197, 139, 215, 0.0)" />
+                    </radialGradient>
+
+                    <radialGradient id="bgBlob2" cx="75%" cy="75%" r="50%">
+                      <stop offset="0%" stopColor="rgba(126, 162, 200, 0.10)" />
+                      <stop offset="50%" stopColor="rgba(126, 162, 200, 0.03)" />
+                      <stop offset="100%" stopColor="rgba(126, 162, 200, 0.0)" />
+                    </radialGradient>
+
+                    <radialGradient id="bgBlob3" cx="50%" cy="50%" r="60%">
+                      <stop offset="0%" stopColor="rgba(139, 92, 246, 0.08)" />
+                      <stop offset="50%" stopColor="rgba(139, 92, 246, 0.02)" />
+                      <stop offset="100%" stopColor="rgba(139, 92, 246, 0.0)" />
                     </radialGradient>
 
                     <radialGradient id="glassBlobPink" cx="35%" cy="30%" r="60%">
@@ -291,7 +318,14 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onAdd, onSe
                     ))}
                 </defs>
 
-                <rect x="0" y="0" width={width} height={height} fill="url(#bg)" />
+                {/* Soft organic background gradients - positioned around relationship nodes */}
+                <ellipse cx={width * 0.25} cy={height * 0.25} rx={width * 0.50} ry={height * 0.50} fill="url(#bgBlob1)" opacity="0.5" />
+                <ellipse cx={width * 0.75} cy={height * 0.75} rx={width * 0.55} ry={height * 0.55} fill="url(#bgBlob2)" opacity="0.4" />
+                <ellipse cx={width * 0.50} cy={height * 0.50} rx={width * 0.65} ry={height * 0.65} fill="url(#bgBlob3)" opacity="0.3" />
+                
+                {/* Additional subtle glow around center */}
+                <ellipse cx={width * 0.50} cy={height * 0.50} rx={width * 0.40} ry={height * 0.40} fill="url(#glassBlobPink)" opacity="0.4" />
+                <ellipse cx={width * 0.50} cy={height * 0.50} rx={width * 0.35} ry={height * 0.35} fill="url(#glassBlobBlue)" opacity="0.3" />
 
                 <g opacity={0.92}>
                   <ellipse cx={center.x} cy={center.y} rx={(peopleBaseRingR + 210) * layoutStretchX} ry={peopleBaseRingR + 210} fill="none" stroke="url(#orbitRing)" strokeWidth={3} opacity={0.26} />

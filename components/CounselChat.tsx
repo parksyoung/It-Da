@@ -20,17 +20,14 @@ interface CounselChatProps {
 }
 
 const CounselChat: React.FC<CounselChatProps> = ({ history, mode, speaker1Name, speaker2Name }) => {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const welcomeMessage = useMemo<ChatMessage>(() => {
     return {
       id: 'welcome',
       role: 'assistant',
-      content:
-        language === 'ko'
-          ? `${speaker2Name}님과의 누적 대화를 바탕으로, 고민을 자유롭게 적어주면 같이 정리해볼게요. (예: “이 상황에서 뭐라고 답장할까?”, “요즘 분위기가 왜 이런 것 같아?”)`
-          : `Ask anything about your conversations with ${speaker2Name}. I’ll use your accumulated chat history to help you think through it.`,
+      content: t('counselChatDescription', { name: speaker2Name }),
     };
-  }, [language, speaker2Name]);
+  }, [t, speaker2Name]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
   const [input, setInput] = useState('');
@@ -113,7 +110,7 @@ const CounselChat: React.FC<CounselChatProps> = ({ history, mode, speaker1Name, 
     <div className="itda-card p-5 md:p-7">
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
-          <div className="text-xl font-black text-gray-800">상담 챗봇</div>
+          <div className="text-xl font-black text-gray-800">{t('counselChatTitle')}</div>
           <div className="text-sm text-gray-600">{speaker2Name} · {mode}</div>
         </div>
         <div className="itda-pill">beta</div>
@@ -149,7 +146,7 @@ const CounselChat: React.FC<CounselChatProps> = ({ history, mode, speaker1Name, 
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={language === 'ko' ? '고민을 자유롭게 적어주세요…' : 'Ask your question…'}
+          placeholder={t('counselChatPlaceholder')}
           className="itda-field smooth-transition min-h-[90px]"
         />
         <button
@@ -157,7 +154,7 @@ const CounselChat: React.FC<CounselChatProps> = ({ history, mode, speaker1Name, 
           disabled={isSending || !input.trim()}
           className="itda-btn itda-btn-primary px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSending ? (language === 'ko' ? '작성 중…' : 'Thinking…') : (language === 'ko' ? '보내기' : 'Send')}
+          {isSending ? t('counselChatSending') : t('counselChatSend')}
         </button>
       </div>
     </div>
