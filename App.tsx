@@ -6,13 +6,14 @@ import { getPersonData, savePersonData } from './services/firebase';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import LandingPage from './components/LandingPage';
 import RelationshipMap from './components/RelationshipMap';
-import { HeartIcon, MapIcon, SparklesIcon, ArrowLeftIcon, PlusIcon } from './components/icons';
+import SelfAnalysis from './components/SelfAnalysis';
+import { HeartIcon, MapIcon, SparklesIcon, ArrowLeftIcon, PlusIcon, UserIcon } from './components/icons';
 import { useLanguage } from './contexts/LanguageContext';
 import { useAuth } from './contexts/AuthContext';
 import ChatInputForm from './components/ChatInputForm';
 import CounselChat from './components/CounselChat';
 
-type View = 'landing' | 'map' | 'input' | 'dashboard';
+type View = 'landing' | 'map' | 'input' | 'dashboard' | 'selfAnalysis';
 type DashboardTab = 'analysis' | 'counsel';
 
 const fileToGenerativePart = async (file: File) => {
@@ -355,6 +356,26 @@ const App: React.FC = () => {
             )}
           </div>
         );
+      case 'selfAnalysis':
+        return (
+          <div className="h-full">
+            <div className="itda-card p-5 md:p-7 mb-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-black text-gray-800 mb-1">{t('selfAnalysisTitle')}</h1>
+                  <p className="text-gray-600">{t('selfAnalysisDescription')}</p>
+                </div>
+                <button
+                  onClick={() => setView('map')}
+                  className="itda-btn itda-btn-secondary px-4 py-2 text-sm smooth-transition"
+                >
+                  {t('backToMap')}
+                </button>
+              </div>
+            </div>
+            <SelfAnalysis />
+          </div>
+        );
       default:
         return <LandingPage onStart={() => setView('map')} />;
     }
@@ -398,6 +419,13 @@ const App: React.FC = () => {
           >
             <MapIcon className="w-5 h-5" />
             {t('relationshipMapTitle')}
+          </button>
+          <button
+            onClick={() => setView('selfAnalysis')}
+            className={`itda-btn itda-btn-secondary w-full px-4 py-3 justify-start ${view === 'selfAnalysis' ? 'ring-2 ring-violet-200/60' : ''}`}
+          >
+            <UserIcon className="w-5 h-5" />
+            {t('selfAnalysisButton')}
           </button>
           <button
             onClick={handleStartAddEmpty}
