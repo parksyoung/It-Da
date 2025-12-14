@@ -421,7 +421,7 @@ const SelfAnalysis: React.FC = () => {
    */
   const handleAnalyze = async () => {
     if (!currentUser?.uid) {
-      setError('로그인이 필요합니다.');
+      setError(t('loginRequiredForSelfAnalysis'));
       return;
     }
 
@@ -441,7 +441,7 @@ const SelfAnalysis: React.FC = () => {
       const histories = await getAllPersonsHistory();
       
       if (histories.length === 0) {
-        setError('분석할 대화가 없습니다. 먼저 관계 맵에 사람을 추가하고 대화를 분석해주세요.');
+        setError(t('noConversationsForSelfAnalysis'));
         setIsLoading(false);
         setIsAnalyzing(false);
         return;
@@ -466,11 +466,11 @@ const SelfAnalysis: React.FC = () => {
       
       // Handle quota/rate-limit errors with friendly message
       if (isQuotaError(err)) {
-        setError('오늘의 AI 분석 사용량을 모두 사용했어요. 내일 다시 시도해주세요.');
+        setError(t('quotaExceeded'));
         // Don't clear cached data on quota error - keep showing previous result if available
       } else {
         // Other errors - show actual error message
-        setError(err.message || '자기 분석에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        setError(err.message || t('selfAnalysisFailed'));
       }
     } finally {
       setIsLoading(false);
@@ -524,7 +524,7 @@ const SelfAnalysis: React.FC = () => {
 
   // If we have error but no data, show error with retry option (unless it's quota error)
   if (error && !analysisData) {
-    const isQuota = error.includes('오늘의 AI 분석 사용량');
+    const isQuota = error.includes(t('quotaExceeded'));
     return (
       <div className="w-full max-w-5xl mx-auto p-4 md:p-6 space-y-6 fade-in">
         <div className={`itda-card p-8 text-center ${isQuota ? 'bg-yellow-50 border-yellow-200' : ''}`}>
@@ -537,7 +537,7 @@ const SelfAnalysis: React.FC = () => {
               disabled={isAnalyzing}
               className="itda-btn itda-btn-primary px-6 py-2 smooth-transition disabled:opacity-50"
             >
-              다시 시도
+              {t('retry')}
             </button>
           )}
         </div>
@@ -568,7 +568,7 @@ const SelfAnalysis: React.FC = () => {
           disabled={isAnalyzing}
           className="itda-btn itda-btn-secondary px-4 py-2 smooth-transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isAnalyzing ? '분석 중...' : '다시 분석하기'}
+          {isAnalyzing ? t('analyzingSelf') : t('retrySelfAnalysis')}
         </button>
       </div>
 

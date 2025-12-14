@@ -118,18 +118,114 @@ const getRomanceStageIndex = (result: AnalysisResult) => {
   return 3; // 연인
 };
 
-const RomanceStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMode }> = ({ result, mode }) => {
-  if (mode !== RelationshipMode.ROMANCE) return null;
+const getFriendStageIndex = (result: AnalysisResult) => {
+  const intimacy = clampPercent(result.intimacyScore);
+  const positivity = clampPercent(result.sentiment?.positive ?? 0);
+  const balance = 100 - Math.abs(result.balanceRatio.speaker1.percentage - result.balanceRatio.speaker2.percentage);
+  // Weighted calculation: intimacy (40%), positivity (35%), balance (25%)
+  const weighted = intimacy * 0.4 + positivity * 0.35 + balance * 0.25;
 
+  if (weighted < 25) return 0; // 비즈니스 관계
+  if (weighted < 50) return 1; // 어색한 친구
+  if (weighted < 75) return 2; // 학교 친구
+  return 3; // 영혼의 듀오
+};
+
+const getWorkStageIndex = (result: AnalysisResult) => {
+  const intimacy = clampPercent(result.intimacyScore);
+  const positivity = clampPercent(result.sentiment?.positive ?? 0);
+  const balance = 100 - Math.abs(result.balanceRatio.speaker1.percentage - result.balanceRatio.speaker2.percentage);
+  // Weighted calculation for workplace: balance (40%), intimacy (35%), positivity (25%)
+  // Workplace relationships prioritize collaboration balance and trust
+  const weighted = balance * 0.4 + intimacy * 0.35 + positivity * 0.25;
+
+  if (weighted < 25) return 0; // 형식적
+  if (weighted < 50) return 1; // 협업
+  if (weighted < 75) return 2; // 신뢰
+  return 3; // 핵심 파트너
+};
+
+const getOtherStageIndex = (result: AnalysisResult) => {
+  const intimacy = clampPercent(result.intimacyScore);
+  const positivity = clampPercent(result.sentiment?.positive ?? 0);
+  const balance = 100 - Math.abs(result.balanceRatio.speaker1.percentage - result.balanceRatio.speaker2.percentage);
+  // Weighted calculation for other relationships: intimacy (45%), positivity (30%), balance (25%)
+  // General relationships focus on emotional connection and positive interaction
+  const weighted = intimacy * 0.45 + positivity * 0.30 + balance * 0.25;
+
+  if (weighted < 25) return 0; // 거리감
+  if (weighted < 50) return 1; // 지인
+  if (weighted < 75) return 2; // 가까운 사이
+  return 3; // 유대
+};
+
+// Calculate workplace-specific metrics
+const getWorkMetrics = (result: AnalysisResult) => {
+  // Politeness: Based on positive sentiment and neutral tone (professional communication)
+  // Higher positive + neutral = more polite/professional
+  const politeness = clampPercent(
+    (result.sentiment.positive * 0.6) + (result.sentiment.neutral * 0.4)
+  );
+
+  // Clarity: Based on balance (clear role division) and response patterns
+  // More balanced communication suggests clearer expectations
+  const balance = 100 - Math.abs(result.balanceRatio.speaker1.percentage - result.balanceRatio.speaker2.percentage);
+  const clarity = clampPercent(balance * 0.7 + (result.sentiment.neutral * 0.3));
+
+  // Emotional Involvement: Based on sentiment intensity and intimacy
+  // Lower intimacy + moderate sentiment = professional distance
+  // Higher intimacy + strong sentiment = more emotional involvement
+  const sentimentIntensity = Math.abs(result.sentiment.positive - result.sentiment.negative);
+  const emotionalInvolvement = clampPercent(
+    (result.intimacyScore * 0.5) + (sentimentIntensity * 50 * 0.5)
+  );
+
+  return {
+    politeness,
+    clarity,
+    emotionalInvolvement,
+  };
+};
+
+// Generate workplace-appropriate summary text
+const getWorkMetricsSummary = (result: AnalysisResult, t: (key: string) => string): string => {
+  const metrics = getWorkMetrics(result);
+  
+  // Simple heuristic-based summary
+  // Can be enhanced later with more sophisticated logic
+  if (metrics.politeness > 70 && metrics.clarity > 60) {
+    return t('workMetricsSummary');
+  } else if (metrics.politeness < 50) {
+    return t('workMetricsSummaryLowPoliteness');
+  } else if (metrics.clarity < 50) {
+    return t('workMetricsSummaryLowClarity');
+  } else {
+    return t('workMetricsSummaryNeutral');
+  }
+};
+
+interface RelationshipProgressProps {
+  result: AnalysisResult;
+  mode: RelationshipMode;
+  titleKey: string;
+  stages: Array<{ key: string; desc: string }>;
+  getStageIndex: (result: AnalysisResult) => number;
+  arrowColor: string;
+  barGradient: string;
+}
+
+const RelationshipProgress: React.FC<RelationshipProgressProps> = ({
+  result,
+  mode,
+  titleKey,
+  stages,
+  getStageIndex,
+  arrowColor,
+  barGradient,
+}) => {
   const { t } = useLanguage();
   const theme = RELATIONSHIP_THEMES[mode];
-  const stages = [
-    { key: 'romanceStageFriend', desc: 'romanceStageDescriptionFriend' },
-    { key: 'romanceStageFlirtingStart', desc: 'romanceStageDescriptionFlirtingStart' },
-    { key: 'romanceStageFlirting', desc: 'romanceStageDescriptionFlirting' },
-    { key: 'romanceStageDating', desc: 'romanceStageDescriptionDating' },
-  ] as const;
-  const stageIndex = getRomanceStageIndex(result);
+  const stageIndex = getStageIndex(result);
   
   // Calculate position: 0 = 0%, 1 = 33.33%, 2 = 66.66%, 3 = 100%
   const markerPct = (stageIndex / (stages.length - 1)) * 100;
@@ -137,37 +233,37 @@ const RomanceStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMod
 
   return (
     <div className="itda-card p-6">
-      <h3 className="text-xl font-bold text-gray-800 mb-4">{t('romanceRelationshipPosition')}</h3>
+      <h3 className="text-xl font-bold text-gray-800 mb-4">{t(titleKey as any)}</h3>
       
-      {/* Stage labels above bar */}
-      <div className="flex justify-between mb-2 text-sm font-semibold text-gray-700">
-        <span>{t(stages[0].key)}</span>
-        <span>{t(stages[1].key)}</span>
-        <span>{t(stages[2].key)}</span>
-        <span>{t(stages[3].key)}</span>
+      {/* Top Layer: Stage labels */}
+      <div className="flex justify-between mb-3 text-sm font-semibold text-gray-700">
+        {stages.map((stage, index) => (
+          <span key={index}>{t(stage.key as any)}</span>
+        ))}
       </div>
 
-      {/* Progress bar with triangle indicator */}
-      <div className="relative mb-6">
-        {/* Progress bar */}
+      {/* Middle Layer: Progress bar */}
+      <div className="relative mb-2">
         <div className="relative h-4 rounded-full overflow-hidden" style={{ background: 'rgba(255, 255, 255, 0.3)' }}>
           <div 
             className="h-full rounded-full" 
             style={{ 
               width: `${fillPct}%`, 
-              background: 'linear-gradient(90deg, #ff4fb3, #ec4899)',
+              background: barGradient,
               transition: 'width 0.5s ease'
             }} 
           />
         </div>
-        {/* Triangle indicator - positioned above the bar */}
+      </div>
+
+      {/* Bottom Layer: Arrow indicator pointing upward */}
+      <div className="relative mb-6" style={{ height: '12px' }}>
         <div
           className="absolute"
           style={{ 
             left: `${markerPct}%`, 
-            bottom: '100%',
+            top: '0',
             transform: 'translateX(-50%)',
-            marginBottom: '4px'
           }}
         >
           <div
@@ -175,7 +271,7 @@ const RomanceStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMod
             style={{
               borderLeft: '8px solid transparent',
               borderRight: '8px solid transparent',
-              borderBottom: '12px solid #ff4fb3',
+              borderBottom: `12px solid ${arrowColor}`,
             }}
           />
         </div>
@@ -184,14 +280,14 @@ const RomanceStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMod
       {/* Description text */}
       <p className="text-base text-gray-700">
         {(() => {
-          const desc = t(stages[stageIndex].desc);
-          const stageName = t(stages[stageIndex].key);
+          const desc = t(stages[stageIndex].desc as any);
+          const stageName = t(stages[stageIndex].key as any);
           const parts = desc.split(stageName);
           if (parts.length > 1) {
             return (
               <>
                 {parts[0]}
-                <span className="font-bold text-pink-600">{stageName}</span>
+                <span className={`font-bold ${theme.text}`}>{stageName}</span>
                 {parts.slice(1).join(stageName)}
               </>
             );
@@ -200,6 +296,98 @@ const RomanceStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMod
         })()}
       </p>
     </div>
+  );
+};
+
+const RomanceStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMode }> = ({ result, mode }) => {
+  if (mode !== RelationshipMode.ROMANCE) return null;
+
+  const stages = [
+    { key: 'romanceStageFriend', desc: 'romanceStageDescriptionFriend' },
+    { key: 'romanceStageFlirtingStart', desc: 'romanceStageDescriptionFlirtingStart' },
+    { key: 'romanceStageFlirting', desc: 'romanceStageDescriptionFlirting' },
+    { key: 'romanceStageDating', desc: 'romanceStageDescriptionDating' },
+  ] as const;
+
+  return (
+    <RelationshipProgress
+      result={result}
+      mode={mode}
+      titleKey="romanceRelationshipPosition"
+      stages={stages}
+      getStageIndex={getRomanceStageIndex}
+      arrowColor="#ff4fb3"
+      barGradient="linear-gradient(90deg, #ff4fb3, #ec4899)"
+    />
+  );
+};
+
+const FriendStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMode }> = ({ result, mode }) => {
+  if (mode !== RelationshipMode.FRIEND) return null;
+
+  const stages = [
+    { key: 'friendStageBusiness', desc: 'friendStageDescriptionBusiness' },
+    { key: 'friendStageAwkward', desc: 'friendStageDescriptionAwkward' },
+    { key: 'friendStageSchool', desc: 'friendStageDescriptionSchool' },
+    { key: 'friendStageSoulmate', desc: 'friendStageDescriptionSoulmate' },
+  ] as const;
+
+  return (
+    <RelationshipProgress
+      result={result}
+      mode={mode}
+      titleKey="friendRelationshipPosition"
+      stages={stages}
+      getStageIndex={getFriendStageIndex}
+      arrowColor="#14b8a6"
+      barGradient="linear-gradient(90deg, #14b8a6, #0d9488)"
+    />
+  );
+};
+
+const WorkStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMode }> = ({ result, mode }) => {
+  if (mode !== RelationshipMode.WORK) return null;
+
+  const stages = [
+    { key: 'workStageFormal', desc: 'workStageDescriptionFormal' },
+    { key: 'workStageCollaboration', desc: 'workStageDescriptionCollaboration' },
+    { key: 'workStageTrust', desc: 'workStageDescriptionTrust' },
+    { key: 'workStageCorePartner', desc: 'workStageDescriptionCorePartner' },
+  ] as const;
+
+  return (
+    <RelationshipProgress
+      result={result}
+      mode={mode}
+      titleKey="workRelationshipPosition"
+      stages={stages}
+      getStageIndex={getWorkStageIndex}
+      arrowColor="#3b82f6"
+      barGradient="linear-gradient(90deg, #3b82f6, #2563eb)"
+    />
+  );
+};
+
+const OtherStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMode }> = ({ result, mode }) => {
+  if (mode !== RelationshipMode.OTHER) return null;
+
+  const stages = [
+    { key: 'otherStageDistant', desc: 'otherStageDescriptionDistant' },
+    { key: 'otherStageAcquaintance', desc: 'otherStageDescriptionAcquaintance' },
+    { key: 'otherStageClose', desc: 'otherStageDescriptionClose' },
+    { key: 'otherStageBond', desc: 'otherStageDescriptionBond' },
+  ] as const;
+
+  return (
+    <RelationshipProgress
+      result={result}
+      mode={mode}
+      titleKey="otherRelationshipPosition"
+      stages={stages}
+      getStageIndex={getOtherStageIndex}
+      arrowColor="#6b7280"
+      barGradient="linear-gradient(90deg, #6b7280, #4b5563)"
+    />
   );
 };
 
@@ -248,6 +436,9 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
   const { t } = useLanguage();
   const theme = RELATIONSHIP_THEMES[mode];
   const isRomance = mode === RelationshipMode.ROMANCE;
+  const isFriend = mode === RelationshipMode.FRIEND;
+  const isWork = mode === RelationshipMode.WORK;
+  const isOther = mode === RelationshipMode.OTHER;
 
   return (
     <div className="w-full max-w-5xl mx-auto p-4 md:p-6 space-y-8 fade-in">
@@ -257,12 +448,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
         <div className="flex-1 w-full text-center md:text-left">
           <h2 className="text-3xl font-bold text-gray-800">{t('analysisResults')}</h2>
           <p className={`mt-2 text-lg font-medium ${theme.text}`}>{result.summary}</p>
-          {!isRomance && (
           <div className="itda-alert itda-alert-warn mt-4" style={{ borderLeftWidth: 4 }}>
             <p className="font-bold">{t('recommendationTitle')}</p>
             <p>{result.recommendation}</p>
           </div>
-          )}
         </div>
       </div>
 
@@ -285,7 +474,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
                 <MetricRow label={t('intimacy')} value={result.intimacyScore} barClassName={theme.medium} />
               </div>
               <p className="mt-4 text-sm text-gray-600">
-                서로를 배려하며 비교적 안정적인 대화 흐름을 유지하고 있어요.
+                {t('relationshipMetricsNote')}
               </p>
             </div>
 
@@ -293,33 +482,146 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
             <div className="itda-card p-5">
               <div className="flex items-center text-gray-700 mb-3">
                 <TagIcon className="w-5 h-5 mr-2 text-indigo-500" />
-                <h3 className="font-bold text-xl">대화 키워드</h3>
+                <h3 className="font-bold text-xl">{t('conversationKeywords')}</h3>
               </div>
               <p className="text-sm text-gray-600 mb-4">
-                실제 대화에서 자주 등장한 표현을 시각화했어요
+                {t('conversationKeywordsDesc')}
               </p>
               <WordCloud result={result} mode={mode} chatHistory={chatHistory} />
             </div>
           </div>
         </>
       ) : (
-        /* Other Modes: Original Layout */
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
-        <div className="itda-card p-5 md:col-span-2">
-          <div className="space-y-3">
-            <MetricRow label={t('participation')} value={result.balanceRatio.speaker1.percentage} barClassName={theme.medium} />
-            <MetricRow label={t('positivity')} value={result.sentiment.positive} barClassName={theme.medium} />
-            <MetricRow label={t('intimacy')} value={result.intimacyScore} barClassName={theme.medium} />
-          </div>
-        </div>
-        <div className="itda-card p-5 md:col-span-3">
-          <div className="flex items-center text-gray-700 mb-3">
-            <TagIcon className="w-5 h-5 mr-2 text-indigo-500" />
-            <h3 className="font-bold">Word Cloud</h3>
-          </div>
-          <WordCloud result={result} mode={mode} />
-        </div>
-      </div>
+        <>
+          {/* Friend Mode: Relationship Stage Card */}
+          {isFriend && <FriendStageCard result={result} mode={mode} />}
+          
+          {/* Work Mode: Relationship Stage Card */}
+          {isWork && <WorkStageCard result={result} mode={mode} />}
+          
+          {/* Other Mode: Relationship Stage Card */}
+          {isOther && <OtherStageCard result={result} mode={mode} />}
+          
+          {/* Friend Mode: Same layout as Romance - Metrics and Keywords */}
+          {isFriend ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left: Relationship Metrics Summary */}
+              <div className="itda-card p-5">
+                <div className="flex items-center text-gray-700 mb-4">
+                  <BarChartIcon className="w-5 h-5 mr-2 text-teal-500" />
+                  <h3 className="font-bold text-xl">{t('relationshipMetricsSummary')}</h3>
+                </div>
+                <div className="space-y-5">
+                  <MetricRow label={t('participation')} value={result.balanceRatio.speaker1.percentage} barClassName={theme.medium} />
+                  <MetricRow label={t('positivity')} value={result.sentiment.positive} barClassName={theme.medium} />
+                  <MetricRow label={t('intimacy')} value={result.intimacyScore} barClassName={theme.medium} />
+                </div>
+                <p className="mt-4 text-sm text-gray-600">
+                  {t('relationshipMetricsNote')}
+                </p>
+              </div>
+
+              {/* Right: Conversation Keywords */}
+              <div className="itda-card p-5">
+                <div className="flex items-center text-gray-700 mb-3">
+                  <TagIcon className="w-5 h-5 mr-2 text-indigo-500" />
+                  <h3 className="font-bold text-xl">{t('conversationKeywords')}</h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  {t('conversationKeywordsDesc')}
+                </p>
+                <WordCloud result={result} mode={mode} chatHistory={chatHistory} />
+              </div>
+            </div>
+          ) : isWork ? (
+            /* Work Mode: Workplace-specific Metrics Layout */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left: Workplace Relationship Metrics Summary */}
+              <div className="itda-card p-5">
+                <div className="flex items-center text-gray-700 mb-4">
+                  <BarChartIcon className="w-5 h-5 mr-2 text-blue-500" />
+                  <h3 className="font-bold text-xl">{t('relationshipMetricsSummary')}</h3>
+                </div>
+                <div className="space-y-5">
+                  {(() => {
+                    const metrics = getWorkMetrics(result);
+                    return (
+                      <>
+                        <MetricRow label={t('workMetricsPoliteness')} value={metrics.politeness} barClassName={theme.medium} />
+                        <MetricRow label={t('workMetricsClarity')} value={metrics.clarity} barClassName={theme.medium} />
+                        <MetricRow label={t('workMetricsEmotionalInvolvement')} value={metrics.emotionalInvolvement} barClassName={theme.medium} />
+                      </>
+                    );
+                  })()}
+                </div>
+                <p className="mt-4 text-sm text-gray-600">
+                  {getWorkMetricsSummary(result, t)}
+                </p>
+              </div>
+
+              {/* Right: Conversation Keywords */}
+              <div className="itda-card p-5">
+                <div className="flex items-center text-gray-700 mb-3">
+                  <TagIcon className="w-5 h-5 mr-2 text-indigo-500" />
+                  <h3 className="font-bold text-xl">{t('conversationKeywords')}</h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  {t('conversationKeywordsDesc')}
+                </p>
+                <WordCloud result={result} mode={mode} chatHistory={chatHistory} />
+              </div>
+            </div>
+          ) : isOther ? (
+            /* Other Mode: Same layout as Romance and Friend - Metrics and Keywords */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left: Relationship Metrics Summary */}
+              <div className="itda-card p-5">
+                <div className="flex items-center text-gray-700 mb-4">
+                  <BarChartIcon className="w-5 h-5 mr-2 text-gray-500" />
+                  <h3 className="font-bold text-xl">{t('relationshipMetricsSummary')}</h3>
+                </div>
+                <div className="space-y-5">
+                  <MetricRow label={t('participation')} value={result.balanceRatio.speaker1.percentage} barClassName={theme.medium} />
+                  <MetricRow label={t('positivity')} value={result.sentiment.positive} barClassName={theme.medium} />
+                  <MetricRow label={t('intimacy')} value={result.intimacyScore} barClassName={theme.medium} />
+                </div>
+                <p className="mt-4 text-sm text-gray-600">
+                  {t('relationshipMetricsNote')}
+                </p>
+              </div>
+
+              {/* Right: Conversation Keywords */}
+              <div className="itda-card p-5">
+                <div className="flex items-center text-gray-700 mb-3">
+                  <TagIcon className="w-5 h-5 mr-2 text-indigo-500" />
+                  <h3 className="font-bold text-xl">{t('conversationKeywords')}</h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  {t('conversationKeywordsDesc')}
+                </p>
+                <WordCloud result={result} mode={mode} chatHistory={chatHistory} />
+              </div>
+            </div>
+          ) : (
+            /* Fallback: Original Layout for any other modes */
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
+              <div className="itda-card p-5 md:col-span-2">
+                <div className="space-y-3">
+                  <MetricRow label={t('participation')} value={result.balanceRatio.speaker1.percentage} barClassName={theme.medium} />
+                  <MetricRow label={t('positivity')} value={result.sentiment.positive} barClassName={theme.medium} />
+                  <MetricRow label={t('intimacy')} value={result.intimacyScore} barClassName={theme.medium} />
+                </div>
+              </div>
+              <div className="itda-card p-5 md:col-span-3">
+                <div className="flex items-center text-gray-700 mb-3">
+                  <TagIcon className="w-5 h-5 mr-2 text-indigo-500" />
+                  <h3 className="font-bold">{t('wordCloud')}</h3>
+                </div>
+                <WordCloud result={result} mode={mode} />
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Next Step Suggestions Section */}
@@ -342,7 +644,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-gray-500">분석 중...</div>
+                <div className="text-sm text-gray-500">{t('analyzing')}</div>
               )}
             </div>
           </div>
@@ -351,7 +653,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
           <div className="itda-card p-5">
             <div className="flex items-center text-gray-700 mb-3">
               <ExclamationTriangleIcon className="w-6 h-6 mr-2 text-amber-500" />
-              <h4 className="font-bold">{t('attentionPointsTitle' as any)}</h4>
+              <h4 className="font-bold">{t('attentionPointsTitle')}</h4>
             </div>
             <div className="space-y-2">
               {result.attentionPoints && result.attentionPoints.length > 0 ? (
@@ -361,7 +663,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-gray-500">분석 중...</div>
+                <div className="text-sm text-gray-500">{t('analyzing')}</div>
               )}
             </div>
           </div>
@@ -371,10 +673,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
         <div className="itda-card p-6">
           <div className="flex items-center text-gray-700 mb-2">
             <TagIcon className="w-6 h-6 mr-2 text-indigo-500" />
-            <h4 className="font-bold text-lg">{t('suggestedTopicsTitle' as any)}</h4>
+            <h4 className="font-bold text-lg">{t('suggestedTopicsTitle')}</h4>
           </div>
           <p className="text-sm text-gray-600 mb-4">
-            {t('suggestedTopicsSubtitle' as any)}
+            {t('suggestedTopicsSubtitle')}
           </p>
           <div className="flex flex-wrap gap-3">
             {result.suggestedTopics && result.suggestedTopics.length > 0 ? (
@@ -397,7 +699,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
                 </button>
               ))
             ) : (
-              <div className="text-sm text-gray-500">분석 중...</div>
+              <div className="text-sm text-gray-500">{t('analyzing')}</div>
             )}
           </div>
         </div>

@@ -17,17 +17,19 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const { signup, login, loginWithGoogle } = useAuth();
   const { t } = useLanguage();
 
+  const { t } = useLanguage();
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     if (isSignUp && password !== confirmPassword) {
-      setError('비밀번호가 일치하지 않습니다.');
+      setError(t('passwordMismatch'));
       return;
     }
 
     if (password.length < 6) {
-      setError('비밀번호는 최소 6자 이상이어야 합니다.');
+      setError(t('passwordTooShort'));
       return;
     }
 
@@ -40,19 +42,19 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       }
       onLoginSuccess?.();
     } catch (err: any) {
-      let errorMessage = '오류가 발생했습니다.';
+      let errorMessage = t('errorOccurred');
       if (err.code === 'auth/email-already-in-use') {
-        errorMessage = '이미 사용 중인 이메일입니다.';
+        errorMessage = t('emailAlreadyInUse');
       } else if (err.code === 'auth/invalid-email') {
-        errorMessage = '유효하지 않은 이메일입니다.';
+        errorMessage = t('invalidEmail');
       } else if (err.code === 'auth/weak-password') {
-        errorMessage = '비밀번호가 너무 약합니다.';
+        errorMessage = t('weakPassword');
       } else if (err.code === 'auth/user-not-found') {
-        errorMessage = '사용자를 찾을 수 없습니다.';
+        errorMessage = t('userNotFound');
       } else if (err.code === 'auth/wrong-password') {
-        errorMessage = '비밀번호가 잘못되었습니다.';
+        errorMessage = t('wrongPassword');
       } else if (err.code === 'auth/too-many-requests') {
-        errorMessage = '너무 많은 시도가 있었습니다. 나중에 다시 시도해주세요.';
+        errorMessage = t('tooManyRequests');
       }
       setError(errorMessage);
     } finally {
@@ -67,11 +69,11 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       await loginWithGoogle();
       onLoginSuccess?.();
     } catch (err: any) {
-      let errorMessage = 'Google 로그인에 실패했습니다.';
+      let errorMessage = t('googleLoginFailed');
       if (err.code === 'auth/popup-closed-by-user') {
-        errorMessage = '로그인 팝업이 닫혔습니다.';
+        errorMessage = t('popupClosed');
       } else if (err.code === 'auth/popup-blocked') {
-        errorMessage = '팝업이 차단되었습니다. 브라우저 설정을 확인해주세요.';
+        errorMessage = t('popupBlocked');
       }
       setError(errorMessage);
     } finally {
@@ -84,17 +86,17 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            {isSignUp ? '회원가입' : '로그인'}
+            {isSignUp ? t('signUp') : t('login')}
           </h1>
           <p className="text-gray-600">
-            {isSignUp ? '새 계정을 만들어 시작하세요' : '계정에 로그인하세요'}
+            {isSignUp ? t('signUpSubtitle') : t('loginSubtitle')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              이메일
+              {t('email')}
             </label>
             <input
               id="email"
@@ -109,7 +111,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              비밀번호
+              {t('password')}
             </label>
             <input
               id="password"
@@ -118,14 +120,14 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
-              placeholder="최소 6자 이상"
+              placeholder={t('passwordMinLength')}
             />
           </div>
 
           {isSignUp && (
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                비밀번호 확인
+                {t('confirmPassword')}
               </label>
               <input
                 id="confirmPassword"
@@ -134,7 +136,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
-                placeholder="비밀번호를 다시 입력하세요"
+                placeholder={t('confirmPasswordPlaceholder')}
               />
             </div>
           )}
@@ -150,7 +152,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             disabled={loading}
             className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? '처리 중...' : isSignUp ? '회원가입' : '로그인'}
+            {loading ? t('processing') : isSignUp ? t('signUp') : t('login')}
           </button>
         </form>
 
@@ -160,7 +162,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">또는</span>
+              <span className="px-2 bg-white text-gray-500">{t('or')}</span>
             </div>
           </div>
 
@@ -187,7 +189,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            Google로 로그인
+            {t('loginWithGoogle')}
           </button>
         </div>
 
@@ -202,7 +204,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             }}
             className="text-sm text-purple-600 hover:text-purple-800 font-medium"
           >
-            {isSignUp ? '이미 계정이 있으신가요? 로그인' : '계정이 없으신가요? 회원가입'}
+            {isSignUp ? t('alreadyHaveAccount') : t('noAccount')}
           </button>
         </div>
       </div>
