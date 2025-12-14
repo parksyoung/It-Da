@@ -146,6 +146,7 @@ export const translations = {
     tempoLeisurely: '느긋',
     analysisSummary: '분석 요약',
     howToGetAlong: '이 유형과 잘 지내는 법',
+    startSelfAnalysis: 'Self 분석하기',
   },
   en: {
     // Landing Page
@@ -295,5 +296,6 @@ export const translations = {
     tempoLeisurely: 'Take your time',
     analysisSummary: 'Analysis Summary',
     howToGetAlong: 'How to Get Along With This Type',
+    startSelfAnalysis: 'Start Self Analysis',
   },
 };

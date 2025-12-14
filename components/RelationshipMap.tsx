@@ -5,7 +5,7 @@ import { PlusIcon, ArrowLeftIcon } from './icons';
 
 interface RelationshipMapProps {
   analyses: StoredAnalysis[];
-  onAdd: (name: string, mode: RelationshipMode) => void;
+  onAdd: (name: string, mode: RelationshipMode) => void; // Called when modal confirms new person - creates NEW person
   onSelect: (analysis: StoredAnalysis) => void;
   onDelete?: (analysis: StoredAnalysis) => void;
   onBack: () => void;
