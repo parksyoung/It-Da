@@ -33,6 +33,7 @@ const App: React.FC = () => {
   const [analyses, setAnalyses] = useState<StoredAnalysis[]>([]);
   const [currentAnalysis, setCurrentAnalysis] = useState<StoredAnalysis | null>(null);
   const [prefilledData, setPrefilledData] = useState<{ name: string; mode: RelationshipMode } | null>(null);
+  const [isCreatingNewPerson, setIsCreatingNewPerson] = useState(false); // Track if we're creating a new person vs adding to existing
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('analysis');
   const [currentHistory, setCurrentHistory] = useState<string[]>([]);
   
@@ -84,6 +85,22 @@ const App: React.FC = () => {
     }
   }, [currentUser, view]);
 
+  /**
+   * Handle conversation analysis for a person
+   * This function handles TWO different scenarios:
+   * 1. Creating a NEW person (isCreatingNewPerson = true): Creates a new person entity with the conversation
+   * 2. Adding conversation to EXISTING person (isCreatingNewPerson = false): Appends conversation to existing person
+   */
+  /**
+   * Handle conversation analysis for a person
+   * 
+   * IMPORTANT: The speaker2Name parameter is the user-provided name and is the source of truth.
+   * This name is stored explicitly in Firestore and is NEVER overwritten by analysis results.
+   * 
+   * This function handles TWO different scenarios:
+   * 1. Creating a NEW person (isCreatingNewPerson = true): Creates a new person entity with the conversation
+   * 2. Adding conversation to EXISTING person (isCreatingNewPerson = false): Appends conversation to existing person
+   */
   const handleNewAnalysis = async (chatText: string, mode: RelationshipMode, speaker1Name: string, speaker2Name: string) => {
     if (!chatText.trim()) {
       setError(t('errorInputRequired'));
@@ -101,44 +118,74 @@ const App: React.FC = () => {
     try {
       const personName = speaker2Name; // 상대방 이름을 personName으로 사용
       
-      // 1. Firestore에서 기존 히스토리 가져오기
-      const existingData = await getPersonData(personName);
+      let updatedHistory: string[];
       
-      // 2. 새 대화를 히스토리에 추가
-      const updatedHistory = existingData 
-        ? [...existingData.history, chatText]
-        : [chatText];
+      if (isCreatingNewPerson) {
+        // SCENARIO 1: Creating a NEW person
+        // Check if person already exists - if so, this is an error (name collision)
+        const existingData = await getPersonData(personName);
+        
+        if (existingData) {
+          // Person with this name already exists - this should not happen
+          // User should use "추가 대화 분석하기" to add conversation to existing person
+          throw new Error(`이미 "${personName}"이라는 이름의 사람이 존재합니다. 기존 사람에게 대화를 추가하려면 해당 사람의 분석 페이지에서 "추가 대화 분석하기" 버튼을 사용해주세요.`);
+        }
+        
+        // Create new person with initial conversation (fresh start)
+        updatedHistory = [chatText];
+      } else {
+        // SCENARIO 2: Adding conversation to EXISTING person
+        // Get existing history and append new conversation
+        const existingData = await getPersonData(personName);
+        
+        if (!existingData) {
+          // Person doesn't exist - this shouldn't happen in normal flow
+          // But we'll treat it as creating a new person
+          console.warn(`[App] Person "${personName}" not found. Creating new person instead.`);
+          updatedHistory = [chatText];
+        } else {
+          // Append to existing history
+          updatedHistory = [...existingData.history, chatText];
+        }
+      }
       
-      // 3. 전체 히스토리를 하나의 문자열로 합치기
+      // 3. Combine all conversations into a single string for analysis
       const historyString = updatedHistory.join('\n\n---\n\n');
       
-      // 4. 전체 히스토리를 기반으로 재분석
+      // 4. Analyze the conversation (or all conversations if adding to existing)
       const result = await analyzeConversation(historyString, mode, language);
       
-      // 5. Firestore에 업데이트된 히스토리와 분석 결과 저장
+      // 5. Save to Firestore (this will create a new document if isCreatingNewPerson=true and person doesn't exist)
+      // CRITICAL: Store personName explicitly - this is the source of truth for the person's name
       await savePersonData(personName, {
+        name: personName, // Store name explicitly - user input is source of truth
         history: updatedHistory,
         analysis: result,
         mode,
       });
       
-      // 6. RelationshipMap 업데이트를 위해 analyses 상태 갱신
+      // 6. Reload all analyses to update the relationship map
       await loadAnalysesFromFirestore();
       
-      // 7. 대시보드에 표시할 현재 분석 결과 설정
+      // 7. Create StoredAnalysis for display
+      // CRITICAL: Use personName (user input) as speaker2Name, NOT analysis result
+      // The person's name comes ONLY from user input, never from analysis
       const newAnalysis: StoredAnalysis = {
         id: `${currentUser.uid}-${personName}`,
         date: new Date().toISOString(),
         mode,
-        speaker1Name,
-        speaker2Name,
+        speaker1Name: t('me'), // Always 'Me' for the user
+        speaker2Name: personName, // Use user-provided name, NOT analysis result
         result
       };
+      
+      // 8. Update UI state
       setCurrentAnalysis(newAnalysis);
       setCurrentHistory(updatedHistory);
       setDashboardTab('analysis');
       setPrefilledData(null); // Clear prefilled data
-      setView('dashboard'); // 분석 결과 페이지로 이동
+      setIsCreatingNewPerson(false); // Reset flag
+      setView('dashboard'); // Navigate to analysis results
     } catch (err: any) {
       let errorMessage = '알 수 없는 오류가 발생했습니다.';
       const errorCode = err?.code;
@@ -193,17 +240,23 @@ const App: React.FC = () => {
     }
   };
 
+  /**
+   * Handle selecting an existing analysis/person
+   * Uses the stored person name from StoredAnalysis (which comes from user input, not analysis)
+   */
   const handleSelectAnalysis = async (analysis: StoredAnalysis) => {
     // Firestore에서 최신 분석 데이터 가져오기
+    // Use speaker2Name from StoredAnalysis which is the user-provided name
     try {
-      const personName = analysis.speaker2Name;
+      const personName = analysis.speaker2Name; // This is the user-provided name, stored in Firestore
       const personData = await getPersonData(personName);
       
       if (personData) {
-        // 최신 분석 결과로 업데이트
+        // 최신 분석 결과로 업데이트 (but preserve the person name from user input)
         const updatedAnalysis: StoredAnalysis = {
           ...analysis,
           result: personData.analysis,
+          speaker2Name: personData.name || analysis.speaker2Name, // Use stored name, preserve user input
         };
         setCurrentAnalysis(updatedAnalysis);
         setCurrentHistory(personData.history || []);
@@ -226,13 +279,23 @@ const App: React.FC = () => {
     setView('dashboard');
   };
 
+  /**
+   * Handle adding conversation to an EXISTING person
+   * Called when user clicks "추가 대화 분석하기" button in dashboard
+   */
   const handleStartAdd = (name: string, mode: RelationshipMode) => {
+    setIsCreatingNewPerson(false); // Adding to existing person
     setPrefilledData({ name, mode });
     setView('input');
   };
 
+  /**
+   * Handle creating a NEW person
+   * Called when user clicks "사람 추가" button in sidebar or "+" button in relationship map
+   */
   const handleStartAddEmpty = () => {
-    setPrefilledData(null);
+    setIsCreatingNewPerson(true); // Creating a new person
+    setPrefilledData(null); // No prefilled data - user will enter name
     setView('input');
   };
 
@@ -249,7 +312,12 @@ const App: React.FC = () => {
           <div className="itda-card p-4 md:p-6 h-full">
             <RelationshipMap
               analyses={analyses}
-              onAdd={handleStartAdd}
+              onAdd={(name, mode) => {
+                // When adding from RelationshipMap modal, create a NEW person
+                setIsCreatingNewPerson(true);
+                setPrefilledData({ name, mode });
+                setView('input');
+              }}
               onSelect={handleSelectAnalysis}
               onBack={() => setView('landing')}
               embedded
@@ -429,7 +497,7 @@ const App: React.FC = () => {
           </button>
           <button
             onClick={handleStartAddEmpty}
-            className={`itda-btn itda-btn-primary w-full px-4 py-3 justify-start ${view === 'input' ? 'ring-2 ring-violet-200/60' : ''}`}
+            className={`itda-btn itda-btn-primary w-full px-4 py-3 justify-start ${view === 'input' && isCreatingNewPerson ? 'ring-2 ring-violet-200/60' : ''}`}
           >
             <PlusIcon className="w-5 h-5" />
             {t('addPerson')}

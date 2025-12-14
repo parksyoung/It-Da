@@ -52,8 +52,12 @@ export interface StoredAnalysis {
 /**
  * Firestore에 저장되는 Person 데이터 구조
  * users/{userId}/persons/{personName}
+ * 
+ * IMPORTANT: personName (the document ID) is the source of truth for the person's name.
+ * The 'name' field below is stored for redundancy and must match the document ID.
  */
 export interface PersonData {
+  name: string;             // Person's name (MUST match document ID) - stored explicitly to avoid dependency on analysis
   history: string[];        // 누적된 모든 대화
   analysis: AnalysisResult; // 최신 AI 분석 결과
   updatedAt?: string;       // 마지막 업데이트 시간 (선택적)

@@ -350,3 +350,130 @@ export const extractTextFromImage = async (imageBase64: string, mimeType: string
     throw new Error("Failed to read text from the image. The image might be unclear or the model is busy.");
   }
 };
+
+/**
+ * Self Analysis Schema - analyzes user's own conversation style
+ */
+const selfAnalysisSchema = {
+  type: Type.OBJECT,
+  properties: {
+    initiative: {
+      type: Type.NUMBER,
+      description: 'Score from 0-100. 0 = Responder (답장러), 100 = Initiator (선톡러). Based on ratio of conversations initiated by the user.',
+    },
+    emotion: {
+      type: Type.NUMBER,
+      description: 'Score from 0-100. 0 = Thinking/Problem-solving (해결형), 100 = Feeling/Empathetic (공감형). Based on positive/negative word ratio, emoji usage, and emotional expressions.',
+    },
+    expression: {
+      type: Type.NUMBER,
+      description: 'Score from 0-100. 0 = Text-oriented (텍스트파), 100 = Emoji-oriented (이모지파). Based on average message length and emoji/emoticon usage ratio.',
+    },
+    tempo: {
+      type: Type.NUMBER,
+      description: 'Score from 0-100. 0 = Slow response (느긋), 100 = Fast response (칼답). Based on average response time.',
+    },
+  },
+  required: ['initiative', 'emotion', 'expression', 'tempo'],
+};
+
+/**
+ * Analyzes the user's own conversation style across all their conversations
+ * 
+ * IMPORTANT: This function is separate from analyzeConversation().
+ * - analyzeConversation: Analyzes relationship between two people
+ * - analyzeSelfConversation: Analyzes user's own communication style
+ * 
+ * These functions do NOT share logic or state.
+ * 
+ * @param allConversations - Combined conversation history from all relationships
+ * @param language - The language for any descriptive text ('ko' or 'en')
+ * @returns Promise with 4-axis scores (0-100 each)
+ */
+export const analyzeSelfConversation = async (
+  allConversations: string,
+  language: 'ko' | 'en'
+): Promise<{ initiative: number; emotion: number; expression: number; tempo: number }> => {
+  const prompt = `
+    You are 'It-Da', a world-class conversation style analysis AI. Your task is to analyze a user's conversation style across ALL their conversations with different people to determine their consistent communication patterns.
+
+    **IMPORTANT: The JSON output MUST contain only numeric values (0-100) for each axis. No text fields.**
+
+    The conversation data provided contains conversations between the user (labeled as various names like "나", "Me", or their actual name) and multiple different people. Analyze the user's behavior patterns consistently across ALL conversations.
+
+    Analyze the following 4 axes:
+
+    1. **Initiative (주도성)**: How often does the user initiate conversations vs. responding?
+       - 0-49: Responder (답장러) - User mostly responds to others' messages
+       - 50-100: Initiator (선톡러) - User frequently starts conversations
+       - Calculation: Ratio of conversations/messages where the user sends the first message in a conversation thread
+
+    2. **Emotion (감성도)**: Does the user express feelings/empathy or focus on problem-solving?
+       - 0-49: Thinking/Problem-solving (해결형) - User focuses on solutions, facts, logic
+       - 50-100: Feeling/Empathetic (공감형) - User expresses emotions, uses empathetic language, emojis like ㅠㅠ, ㅋㅋ, 감탄사
+       - Calculation: Consider positive/negative word ratios, emoji usage frequency, emotional expressions, empathetic phrases
+
+    3. **Expression Style (표현 방식)**: Does the user prefer text or emoji/emoticons?
+       - 0-49: Text-oriented (텍스트파) - Longer messages, fewer emojis/emoticons
+       - 50-100: Emoji-oriented (이모지파) - Frequent use of emojis, emoticons, shorter messages
+       - Calculation: Average message length, emoji/emoticon usage ratio per message
+
+    4. **Tempo (속도)**: How quickly does the user respond?
+       - 0-49: Slow response (느긋) - Takes time to respond, longer gaps
+       - 50-100: Fast response (칼답) - Quick responses, short gaps between messages
+       - Calculation: Average response time in minutes (if timestamps available), or message frequency
+
+    Analyze the combined conversation history and provide scores for each axis (0-100).
+
+    Combined conversation history (user's messages across all relationships):
+    ---
+    ${allConversations}
+    ---
+  `;
+
+  try {
+    const ai = getAi();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: selfAnalysisSchema,
+      },
+    });
+    
+    const jsonString = response.text.trim();
+    const result = JSON.parse(jsonString);
+    
+    // Ensure values are within 0-100 range
+    return {
+      initiative: Math.max(0, Math.min(100, result.initiative || 50)),
+      emotion: Math.max(0, Math.min(100, result.emotion || 50)),
+      expression: Math.max(0, Math.min(100, result.expression || 50)),
+      tempo: Math.max(0, Math.min(100, result.tempo || 50)),
+    };
+  } catch (error: any) {
+    console.error("Error analyzing self conversation:", error);
+    
+    // Preserve quota/rate-limit errors so they can be handled specially
+    if (error?.status === 429 || error?.code === 429) {
+      const quotaError: any = new Error("Quota exceeded");
+      quotaError.status = 429;
+      quotaError.code = 429;
+      quotaError.originalError = error;
+      throw quotaError;
+    }
+    
+    // Check for quota-related error messages
+    const errorMessage = error?.message?.toLowerCase() || '';
+    if (errorMessage.includes('resource_exhausted') || errorMessage.includes('quota')) {
+      const quotaError: any = new Error("Quota exceeded");
+      quotaError.status = 429;
+      quotaError.code = 429;
+      quotaError.originalError = error;
+      throw quotaError;
+    }
+    
+    throw new Error("Failed to analyze self conversation style. The AI model might be experiencing issues.");
+  }
+};

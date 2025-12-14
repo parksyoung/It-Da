@@ -6,7 +6,7 @@ import { RELATIONSHIP_THEMES } from '../constants';
 
 interface RelationshipMapProps {
   analyses: StoredAnalysis[];
-  onAdd: (name: string, mode: RelationshipMode) => void;
+  onAdd: (name: string, mode: RelationshipMode) => void; // Called when modal confirms new person - creates NEW person
   onSelect: (analysis: StoredAnalysis) => void;
   onBack: () => void;
   embedded?: boolean;

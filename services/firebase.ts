@@ -151,6 +151,7 @@ export const getPersonData = async (personName: string): Promise<PersonData | nu
     if (personSnap.exists()) {
       const data = personSnap.data();
       return {
+        name: data.name || personName, // Use stored name, fallback to document ID
         history: data.history || [],
         analysis: data.analysis as AnalysisResult,
         updatedAt: data.updatedAt,
@@ -223,12 +224,15 @@ export const savePersonData = async (
   try {
     const userId = getCurrentUserId();
     const personRef = doc(db, 'users', userId, 'persons', personName);
+    // Store person name explicitly - this is the source of truth, independent of analysis results
+    // Use merge: true to preserve existing name field if document already exists
     await setDoc(personRef, {
+      name: personName, // Store name explicitly to avoid dependency on analysis
       history: data.history,
       analysis: data.analysis,
       mode: data.mode,
       updatedAt: data.updatedAt || new Date().toISOString(),
-    }, { merge: false });
+    }, { merge: true }); // Use merge: true to preserve name field when updating existing person
   } catch (error: any) {
     // 인증 오류는 그대로 전파
     if (error instanceof Error && (
@@ -349,9 +353,11 @@ export const getAllPersonsAsAnalyses = async (): Promise<StoredAnalysis[]> => {
       const data = docSnap.data();
       
       if (data.analysis) {
-        // analysis에서 speaker1, speaker2 이름 추출
-        const speaker1Name = data.analysis.balanceRatio?.speaker1?.name || 'Me';
-        const speaker2Name = data.analysis.balanceRatio?.speaker2?.name || personName;
+        // CRITICAL: Use stored name field (or document ID as fallback), NEVER use analysis result names
+        // Analysis results can extract different names, but the person's name is what the user entered
+        const storedPersonName = data.name || personName; // Use stored name field, fallback to document ID
+        const speaker1Name = 'Me'; // Always 'Me' for the user
+        const speaker2Name = storedPersonName; // Use stored person name, NOT analysis result
         
         const mode = (data.mode as RelationshipMode) || RelationshipMode.FRIEND;
         
@@ -403,6 +409,54 @@ export const getAllPersonsAsAnalyses = async (): Promise<StoredAnalysis[]> => {
     }
     
     throw new Error(`Failed to retrieve persons data from Firestore: ${error?.message || 'Unknown error'}`);
+  }
+};
+
+/**
+ * Get all conversation histories from all persons
+ * @returns Promise<string[]> - Array of conversation history strings
+ */
+export const getAllPersonsHistory = async (): Promise<string[]> => {
+  if (!db) {
+    throw new Error('Firestore is not initialized');
+  }
+
+  try {
+    const userId = getCurrentUserId();
+    const personsRef = collection(db, 'users', userId, 'persons');
+    const personsSnap = await getDocs(personsRef);
+    
+    const histories: string[] = [];
+    
+    personsSnap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.history && Array.isArray(data.history) && data.history.length > 0) {
+        // Combine all conversation sessions for this person
+        const personHistory = data.history.join('\n\n---\n\n');
+        histories.push(personHistory);
+      }
+    });
+    
+    return histories;
+  } catch (error: any) {
+    // 인증 오류는 그대로 전파
+    if (error instanceof Error && (
+      error.message === 'User is not authenticated' ||
+      error.message === 'Firebase Auth is not initialized'
+    )) {
+      throw error;
+    }
+    
+    // Firestore 오류 상세 로깅
+    const userId = auth?.currentUser?.uid || 'unknown';
+    console.error('[Firestore] Failed to get all persons history', {
+      userId,
+      error: error?.message || error,
+      code: error?.code,
+      stack: error?.stack,
+    });
+    
+    throw new Error(`Failed to retrieve conversation histories: ${error?.message || 'Unknown error'}`);
   }
 };
 
