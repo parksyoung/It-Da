@@ -1,7 +1,7 @@
 import React from 'react';
 import { AnalysisResult, RelationshipMode } from '../types';
 import RelationshipGauge from './RelationshipGauge';
-import { ChatBubblePlusIcon, TagIcon } from './icons';
+import { ChatBubblePlusIcon, TagIcon, BarChartIcon } from './icons';
 import { RELATIONSHIP_THEMES } from '../constants';
 import { useLanguage } from '../contexts/LanguageContext';
 import SentimentChart from './SentimentChart';
@@ -73,50 +73,89 @@ const getRomanceStageIndex = (result: AnalysisResult) => {
   const positivity = clampPercent(result.sentiment?.positive ?? 0);
   const weighted = intimacy * 0.75 + positivity * 0.25;
 
-  if (weighted < 40) return 0;
-  if (weighted < 70) return 1;
-  return 2;
+  if (weighted < 30) return 0; // 친구
+  if (weighted < 55) return 1; // 썸 초입
+  if (weighted < 75) return 2; // 썸
+  return 3; // 연인
 };
 
-const RomanceStageBar: React.FC<{ result: AnalysisResult; mode: RelationshipMode }> = ({ result, mode }) => {
+const RomanceStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMode }> = ({ result, mode }) => {
   if (mode !== RelationshipMode.ROMANCE) return null;
 
+  const { t } = useLanguage();
   const theme = RELATIONSHIP_THEMES[mode];
-  const stages = ['친구/썸초입', '썸', '연인'] as const;
+  const stages = [
+    { key: 'romanceStageFriend', desc: 'romanceStageDescriptionFriend' },
+    { key: 'romanceStageFlirtingStart', desc: 'romanceStageDescriptionFlirtingStart' },
+    { key: 'romanceStageFlirting', desc: 'romanceStageDescriptionFlirting' },
+    { key: 'romanceStageDating', desc: 'romanceStageDescriptionDating' },
+  ] as const;
   const stageIndex = getRomanceStageIndex(result);
+  
+  // Calculate position: 0 = 0%, 1 = 33.33%, 2 = 66.66%, 3 = 100%
   const markerPct = (stageIndex / (stages.length - 1)) * 100;
+  const fillPct = markerPct;
 
   return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between gap-3 mb-2">
-        <div className="text-sm font-bold text-gray-800">관계 단계</div>
-        <div className="itda-pill" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
-          <span className={`font-bold ${theme.text}`}>현재: {stages[stageIndex]}</span>
-        </div>
+    <div className="itda-card p-6">
+      <h3 className="text-xl font-bold text-gray-800 mb-4">{t('romanceRelationshipPosition')}</h3>
+      
+      {/* Stage labels above bar */}
+      <div className="flex justify-between mb-2 text-sm font-semibold text-gray-700">
+        <span>{t(stages[0].key)}</span>
+        <span>{t(stages[1].key)}</span>
+        <span>{t(stages[2].key)}</span>
+        <span>{t(stages[3].key)}</span>
       </div>
 
-      <div className="relative h-3 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-        <div className={`${theme.medium} h-full`} style={{ width: `${markerPct}%`, opacity: 0.85 }} />
+      {/* Progress bar with triangle indicator */}
+      <div className="relative h-4 rounded-full overflow-visible" style={{ background: 'rgba(255, 255, 255, 0.3)' }}>
+        <div 
+          className="h-full rounded-full" 
+          style={{ 
+            width: `${fillPct}%`, 
+            background: 'linear-gradient(90deg, #ff4fb3, #ec4899)',
+            transition: 'width 0.5s ease'
+          }} 
+        />
+        {/* Triangle indicator */}
         <div
-          className="absolute top-1/2"
-          style={{ left: `${markerPct}%`, transform: 'translate(-50%, -50%)' }}
+          className="absolute top-full"
+          style={{ 
+            left: `${markerPct}%`, 
+            transform: 'translateX(-50%)',
+            marginTop: '-2px'
+          }}
         >
           <div
-            className="w-4 h-4 rounded-full"
+            className="w-0 h-0"
             style={{
-              background: 'rgba(255,255,255,0.75)',
-              border: '2px solid rgba(255,255,255,0.25)',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
+              borderLeft: '8px solid transparent',
+              borderRight: '8px solid transparent',
+              borderTop: '12px solid #ff4fb3',
             }}
           />
         </div>
       </div>
 
-      <div className="mt-2 grid grid-cols-3 text-xs font-semibold text-gray-600">
-        <div className="text-left">{stages[0]}</div>
-        <div className="text-center">{stages[1]}</div>
-        <div className="text-right">{stages[2]}</div>
-      </div>
+      {/* Description text */}
+      <p className="mt-4 text-base text-gray-700">
+        {(() => {
+          const desc = t(stages[stageIndex].desc);
+          const stageName = t(stages[stageIndex].key);
+          const parts = desc.split(stageName);
+          if (parts.length > 1) {
+            return (
+              <>
+                {parts[0]}
+                <span className="font-bold text-pink-600">{stageName}</span>
+                {parts.slice(1).join(stageName)}
+              </>
+            );
+          }
+          return desc;
+        })()}
+      </p>
     </div>
   );
 };
@@ -138,26 +177,26 @@ const WordCloud: React.FC<{ result: AnalysisResult; mode: RelationshipMode }> = 
   };
 
   return (
-    <div>
-      <RomanceStageBar result={result} mode={mode} />
       <div className="flex flex-wrap gap-2">
         {words.map((w) => (
           <span
             key={w.word}
-            className={`itda-pill ${theme.text}`}
+          className="itda-pill text-gray-800"
             style={{
               fontSize: `${scale(w.count)}px`,
               lineHeight: 1.1,
               fontWeight: 800,
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.10)',
+            background: 'rgba(147, 51, 234, 0.15)',
+            border: '1px solid rgba(147, 51, 234, 0.25)',
+            color: '#6b21a8',
+            padding: '6px 12px',
+            borderRadius: '20px',
             }}
             title={`${w.word} (${w.count})`}
           >
             {w.word}
           </span>
         ))}
-      </div>
     </div>
   );
 };
@@ -165,6 +204,7 @@ const WordCloud: React.FC<{ result: AnalysisResult; mode: RelationshipMode }> = 
 const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode }) => {
   const { t } = useLanguage();
   const theme = RELATIONSHIP_THEMES[mode];
+  const isRomance = mode === RelationshipMode.ROMANCE;
 
   return (
     <div className="w-full max-w-5xl mx-auto p-4 md:p-6 space-y-8 fade-in">
@@ -174,14 +214,68 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode }) =
         <div className="flex-1 w-full text-center md:text-left">
           <h2 className="text-3xl font-bold text-gray-800">{t('analysisResults')}</h2>
           <p className={`mt-2 text-lg font-medium ${theme.text}`}>{result.summary}</p>
+          {!isRomance && (
           <div className="itda-alert itda-alert-warn mt-4" style={{ borderLeftWidth: 4 }}>
             <p className="font-bold">{t('recommendationTitle')}</p>
             <p>{result.recommendation}</p>
           </div>
+          )}
         </div>
       </div>
 
-      {/* Core Metrics Thermometers */}
+      {isRomance ? (
+        <>
+          {/* Romance Mode: Relationship Stage Card */}
+          <RomanceStageCard result={result} mode={mode} />
+
+          {/* Romance Mode: Bottom Section - Metrics and Keywords */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left: Relationship Metrics Summary */}
+            <div className="itda-card p-5">
+              <div className="flex items-center text-gray-700 mb-4">
+                <BarChartIcon className="w-5 h-5 mr-2 text-pink-500" />
+                <h3 className="font-bold text-lg">{t('relationshipMetricsSummary')}</h3>
+              </div>
+              <div className="space-y-4">
+                <MetricRow label={t('participation')} value={result.balanceRatio.speaker1.percentage} barClassName={theme.medium} />
+                <MetricRow label={t('positivity')} value={result.sentiment.positive} barClassName={theme.medium} />
+                <MetricRow label={t('intimacy')} value={result.intimacyScore} barClassName={theme.medium} />
+              </div>
+              <p className="mt-4 text-sm text-gray-600">
+                서로를 배려하며 비교적 안정적인 대화 흐름을 유지하고 있어요.
+              </p>
+            </div>
+
+            {/* Right: Conversation Keywords */}
+            <div className="itda-card p-5">
+              <div className="flex items-center text-gray-700 mb-3">
+                <TagIcon className="w-5 h-5 mr-2 text-indigo-500" />
+                <h3 className="font-bold text-lg">대화 키워드</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                실제 대화에서 자주 등장한 표현을 시각화했어요
+              </p>
+              <WordCloud result={result} mode={mode} />
+              {/* Legend */}
+              <div className="flex items-center gap-4 mt-4 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-pink-400"></div>
+                  <span className="text-gray-600">감정</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-purple-400"></div>
+                  <span className="text-gray-600">상황</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-orange-400"></div>
+                  <span className="text-gray-600">관계/행동</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        /* Other Modes: Original Layout */
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
         <div className="itda-card p-5 md:col-span-2">
           <div className="space-y-3">
@@ -198,6 +292,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode }) =
           <WordCloud result={result} mode={mode} />
         </div>
       </div>
+      )}
 
       {/* Visualizations Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">

@@ -311,8 +311,9 @@ export const askRelationshipCoach = async (
     Please provide helpful, empathetic advice based on the analysis results. Focus on being a relationship coach, not a free-form chat assistant.
     Keep your response concise and actionable.
   `;
-  
+
   try {
+    const ai = getAi();
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,

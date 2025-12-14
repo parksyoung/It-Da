@@ -96,7 +96,7 @@ export const translations = {
     romanceStageFlirting: '썸',
     romanceStageDating: '연인',
     romanceStageDescriptionFriend: '친근하지만, 아직 확실한 감정 표현 단계는 아니에요. 가볍게 리액션하며 신뢰를 쌓는 게 좋아요.',
-    romanceStageDescriptionFlirtingStart: '서로에게 관심이 생기기 시작한 단계예요. 자연스럽게 대화를 이어가며 호감을 키워가면 좋아요.',
+    romanceStageDescriptionFlirtingStart: '호감이 있는 단계예요. 자연스럽게 대화를 이어가며 서로를 알아가는 썸 초입이에요.',
     romanceStageDescriptionFlirting: '서로의 감정을 확인하고 있는 단계예요. 부담 없이 솔직한 대화를 나누는 게 중요해요.',
     romanceStageDescriptionDating: '연인 관계로 발전했어요. 서로에 대한 이해와 배려가 잘 형성되어 있어요.',
     romanceAttentionPoints: '현재 관계에서 주의할 포인트',
