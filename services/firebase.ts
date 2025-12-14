@@ -1,11 +1,17 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore, Firestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, Firestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 import { AnalysisResult, PersonData, StoredAnalysis, RelationshipMode } from '../types';
 
 // Firebase 설정
 // 환경 변수에서 Firebase 설정을 가져옵니다
 // 개발 환경에서 .env.local 파일이 없을 경우를 위한 기본값
+const errorWithCode = (message: string, code?: string) => {
+  const err: any = new Error(message);
+  if (code) err.code = code;
+  return err;
+};
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyCbWNluU4Vh4e7Fn7hk-VFSVzttGc3no0Q',
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'it-da-23307.firebaseapp.com',
@@ -48,7 +54,9 @@ let db: Firestore;
 
 try {
   // 중복 초기화 방지: 이미 초기화된 앱이 있으면 재사용
-  if (!getApps().length) {
+  const hasExistingApp = getApps().length > 0;
+
+  if (!hasExistingApp) {
     app = initializeApp(firebaseConfig);
   } else {
     app = getApp();
@@ -64,7 +72,17 @@ try {
   googleProvider = new GoogleAuthProvider();
   
   // Firestore 인스턴스 생성 (동일한 app 인스턴스 재사용)
-  db = getFirestore(app);
+  // unavailable(네트워크/프록시/방화벽) 환경에서 WebChannel이 막히는 경우가 있어
+  // long-polling을 사용하도록 설정합니다.
+  // 단, 개발 중 HMR로 모듈이 재실행될 때 initializeFirestore를 다시 호출하면
+  // "already been started" 류 에러로 앱이 크래시(흰 화면)날 수 있으므로
+  // 최초 초기화 때만 initializeFirestore를 사용하고 이후에는 기존 인스턴스를 재사용합니다.
+  db = hasExistingApp
+    ? getFirestore(app)
+    : initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        useFetchStreams: false,
+      });
   if (!db) {
     throw new Error('Firestore 초기화 실패: db 인스턴스를 생성할 수 없습니다.');
   }
@@ -158,14 +176,24 @@ export const getPersonData = async (personName: string): Promise<PersonData | nu
       stack: error?.stack,
     });
     
+    // Firestore 미설정(데이터베이스 생성 전)에서 자주 발생
+    if (error?.code === 'failed-precondition') {
+      throw errorWithCode('Firestore Database가 아직 생성/활성화되지 않았습니다. Firebase Console에서 Firestore Database를 생성한 뒤 다시 시도해주세요.', error?.code);
+    }
+
     // 오프라인 오류인 경우 특별 처리
     if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
-      throw new Error('Firestore is offline. Please check your internet connection.');
+      throw errorWithCode('Firestore is offline. Please check your internet connection.', error?.code);
     }
     
     // 권한 오류인 경우 특별 처리
     if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
-      throw new Error('Permission denied. Please check Firestore security rules.');
+      throw errorWithCode('Permission denied. Please check Firestore security rules.', error?.code);
+    }
+    
+    // 인증 오류인 경우 특별 처리
+    if (error?.code === 'unauthenticated') {
+      throw errorWithCode('User is not authenticated. Please sign in and try again.', error?.code);
     }
     
     throw new Error(`Failed to retrieve person data from Firestore: ${error?.message || 'Unknown error'}`);
@@ -220,14 +248,24 @@ export const savePersonData = async (
       stack: error?.stack,
     });
     
+    // Firestore 미설정(데이터베이스 생성 전)에서 자주 발생
+    if (error?.code === 'failed-precondition') {
+      throw errorWithCode('Firestore Database가 아직 생성/활성화되지 않았습니다. Firebase Console에서 Firestore Database를 생성한 뒤 다시 시도해주세요.', error?.code);
+    }
+
     // 오프라인 오류인 경우 특별 처리
     if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
-      throw new Error('Firestore is offline. Please check your internet connection.');
+      throw errorWithCode('Firestore is offline. Please check your internet connection.', error?.code);
     }
     
     // 권한 오류인 경우 특별 처리
     if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
-      throw new Error('Permission denied. Please check Firestore security rules.');
+      throw errorWithCode('Permission denied. Please check Firestore security rules.', error?.code);
+    }
+    
+    // 인증 오류인 경우 특별 처리
+    if (error?.code === 'unauthenticated') {
+      throw errorWithCode('User is not authenticated. Please sign in and try again.', error?.code);
     }
     
     throw new Error(`Failed to save person data to Firestore: ${error?.message || 'Unknown error'}`);
@@ -266,14 +304,24 @@ export const deletePerson = async (personName: string): Promise<void> => {
       stack: error?.stack,
     });
     
+    // Firestore 미설정(데이터베이스 생성 전)에서 자주 발생
+    if (error?.code === 'failed-precondition') {
+      throw errorWithCode('Firestore Database가 아직 생성/활성화되지 않았습니다. Firebase Console에서 Firestore Database를 생성한 뒤 다시 시도해주세요.', error?.code);
+    }
+
     // 오프라인 오류인 경우 특별 처리
     if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
-      throw new Error('Firestore is offline. Please check your internet connection.');
+      throw errorWithCode('Firestore is offline. Please check your internet connection.', error?.code);
     }
     
     // 권한 오류인 경우 특별 처리
     if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
-      throw new Error('Permission denied. Please check Firestore security rules.');
+      throw errorWithCode('Permission denied. Please check Firestore security rules.', error?.code);
+    }
+    
+    // 인증 오류인 경우 특별 처리
+    if (error?.code === 'unauthenticated') {
+      throw errorWithCode('User is not authenticated. Please sign in and try again.', error?.code);
     }
     
     throw new Error(`Failed to delete person from Firestore: ${error?.message || 'Unknown error'}`);
@@ -339,14 +387,19 @@ export const getAllPersonsAsAnalyses = async (): Promise<StoredAnalysis[]> => {
       stack: error?.stack,
     });
     
+    // Firestore 미설정(데이터베이스 생성 전)에서 자주 발생
+    if (error?.code === 'failed-precondition') {
+      throw errorWithCode('Firestore Database가 아직 생성/활성화되지 않았습니다. Firebase Console에서 Firestore Database를 생성한 뒤 다시 시도해주세요.', error?.code);
+    }
+
     // 오프라인 오류인 경우 특별 처리
     if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
-      throw new Error('Firestore is offline. Please check your internet connection.');
+      throw errorWithCode('Firestore is offline. Please check your internet connection.', error?.code);
     }
     
     // 권한 오류인 경우 특별 처리
     if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
-      throw new Error('Permission denied. Please check Firestore security rules.');
+      throw errorWithCode('Permission denied. Please check Firestore security rules.', error?.code);
     }
     
     throw new Error(`Failed to retrieve persons data from Firestore: ${error?.message || 'Unknown error'}`);

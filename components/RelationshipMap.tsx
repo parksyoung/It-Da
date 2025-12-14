@@ -9,6 +9,8 @@ interface RelationshipMapProps {
   onAdd: (name: string, mode: RelationshipMode) => void;
   onSelect: (analysis: StoredAnalysis) => void;
   onBack: () => void;
+  embedded?: boolean;
+  showBackButton?: boolean;
 }
 
 const AddPersonModal: React.FC<{
@@ -31,8 +33,8 @@ const AddPersonModal: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 fade-in" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md m-4" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 fade-in" onClick={onClose}>
+            <div className="itda-surface p-8 w-full max-w-md m-4" onClick={(e) => e.stopPropagation()}>
                 <h3 className="text-2xl font-bold text-gray-800 mb-6">{t('addPersonModalTitle')}</h3>
                 <div className="space-y-4">
                     <div>
@@ -44,7 +46,7 @@ const AddPersonModal: React.FC<{
                             onChange={(e) => setName(e.target.value)}
                             // FIX: Replaced invalid translation key 'speaker2Name' with 'namePlaceholder'.
                             placeholder={t('namePlaceholder')}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 smooth-transition"
+                            className="itda-field smooth-transition"
                         />
                     </div>
                     <div>
@@ -53,7 +55,7 @@ const AddPersonModal: React.FC<{
                             id="relationship-type"
                             value={mode}
                             onChange={(e) => setMode(e.target.value as RelationshipMode)}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 smooth-transition"
+                            className="itda-field smooth-transition"
                         >
                             {Object.values(RelationshipMode).map((m) => (
                                 <option key={m} value={m}>{t(m as any)}</option>
@@ -62,51 +64,46 @@ const AddPersonModal: React.FC<{
                     </div>
                 </div>
                 <div className="flex justify-end gap-4 mt-8">
-                    <button onClick={onClose} className="px-6 py-2 text-gray-700 font-semibold rounded-lg bg-gray-100 hover:bg-gray-200 smooth-transition">{t('cancelButton')}</button>
-                    <button onClick={handleSubmit} disabled={!name.trim()} className="px-6 py-2 text-white font-bold rounded-lg bg-purple-500 hover:bg-purple-600 smooth-transition disabled:bg-gray-300">{t('addButton')}</button>
+                    <button onClick={onClose} className="itda-btn itda-btn-secondary px-6 py-2 smooth-transition">{t('cancelButton')}</button>
+                    <button onClick={handleSubmit} disabled={!name.trim()} className="itda-btn itda-btn-primary px-6 py-2 smooth-transition disabled:opacity-50 disabled:cursor-not-allowed">{t('addButton')}</button>
                 </div>
             </div>
         </div>
     );
 };
 
-const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onAdd, onSelect, onBack }) => {
+const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onAdd, onSelect, onBack, embedded = false, showBackButton = true }) => {
   const { t } = useLanguage();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const width = 1600;
   const height = 1600;
   const center = { x: width / 2, y: height / 2 };
-  const mainRadius = Math.min(width, height) / 3;
-  const clusterRadius = 220;
-  const meNodeRadius = 90;
-  const relationshipNodeRadius = 80;
-  const categoryNodeRadius = 75;
+
+  // Tree layout (top is smaller y)
+  const leafBaseY = 520;
+  const categoryY = 860;
+  const trunkSplitY = 1060;
+
+  const mePos = { x: center.x, y: 1320 };
+  const categoryNodeRadius = 70;
+  const relationshipNodeRadius = 74;
+  const meNodeRadius = 88;
 
 
-  const themeColors = Object.entries(RELATIONSHIP_THEMES).reduce((acc, [key, value]) => {
-    const colorMap: { [key: string]: string } = {
-        'bg-blue-500': '#3b82f6',   // WORK
-        'bg-pink-500': '#ec4899',    // ROMANCE
-        'bg-teal-500': '#14b8a6',   // FRIEND
-        'bg-gray-500': '#6b7280',   // OTHER
-    };
-    acc[key] = colorMap[value.medium] || '#9ca3af';
-    return acc;
-  }, {} as { [key: string]: string });
-  
+  const themeColors: { [key in RelationshipMode]: { stroke: string; fill: string } } = {
+    [RelationshipMode.WORK]: { stroke: '#7dd3fc', fill: 'rgba(125, 211, 252, 0.18)' },
+    [RelationshipMode.FRIEND]: { stroke: '#6ee7b7', fill: 'rgba(110, 231, 183, 0.18)' },
+    [RelationshipMode.ROMANCE]: { stroke: '#fb7185', fill: 'rgba(251, 113, 133, 0.18)' },
+    [RelationshipMode.OTHER]: { stroke: '#c4b5fd', fill: 'rgba(196, 181, 253, 0.18)' },
+  };
+
   const categories = [
-    { mode: RelationshipMode.WORK, angle: -90, name: t('WORK' as any) },
-    { mode: RelationshipMode.FRIEND, angle: 0, name: t('FRIEND' as any) },
-    { mode: RelationshipMode.OTHER, angle: 90, name: t('OTHER' as any) },
-    { mode: RelationshipMode.ROMANCE, angle: 180, name: t('ROMANCE' as any) },
+    { mode: RelationshipMode.WORK, x: center.x - 500, y: categoryY, name: t('WORK' as any) },
+    { mode: RelationshipMode.FRIEND, x: center.x - 260, y: categoryY, name: t('FRIEND' as any) },
+    { mode: RelationshipMode.ROMANCE, x: center.x + 260, y: categoryY, name: t('ROMANCE' as any) },
+    { mode: RelationshipMode.OTHER, x: center.x + 500, y: categoryY, name: t('OTHER' as any) },
   ];
-
-  const categoryAnchors = categories.map(cat => ({
-      ...cat,
-      x: center.x + mainRadius * Math.cos(cat.angle * Math.PI / 180),
-      y: center.y + mainRadius * Math.sin(cat.angle * Math.PI / 180),
-  }));
 
   const analysesByMode = analyses.reduce((acc, analysis) => {
     if (Object.values(RelationshipMode).includes(analysis.mode)) {
@@ -120,147 +117,249 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onAdd, onSe
     setIsModalOpen(false);
   };
 
+  const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
+  const buildLeafPositions = (mode: RelationshipMode, anchorX: number, anchorY: number, nodes: StoredAnalysis[]) => {
+    const total = nodes.length;
+    const regionWidth = mode === RelationshipMode.WORK || mode === RelationshipMode.OTHER ? 560 : 420;
+    const regionMinX = anchorX - regionWidth / 2;
+    const regionMaxX = anchorX + regionWidth / 2;
+
+    const minSpacingX = relationshipNodeRadius * 2 + 52;
+    const minSpacingY = relationshipNodeRadius * 2 + 78;
+
+    const maxCols = mode === RelationshipMode.WORK || mode === RelationshipMode.OTHER ? 3 : 2;
+    const cols = total <= 1 ? 1 : Math.min(maxCols, Math.max(2, Math.ceil(Math.sqrt(total))));
+    const rows = Math.max(1, Math.ceil(total / cols));
+
+    const usableWidth = regionWidth - 20;
+    const spacingX = cols === 1 ? 0 : Math.max(minSpacingX, usableWidth / (cols - 1));
+    const spacingY = Math.max(minSpacingY, 190);
+
+    const startX = anchorX - ((cols - 1) / 2) * spacingX;
+    const startY = anchorY - 260;
+
+    const placed: { id: string; x: number; y: number }[] = [];
+    const minDist = relationshipNodeRadius * 2 + 32;
+
+    for (let i = 0; i < total; i++) {
+      const node = nodes[i];
+      const seed = (node.speaker2Name || '').length + node.result.intimacyScore;
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+
+      let x = startX + col * spacingX + Math.sin(seed * 0.9 + i * 1.7) * 10;
+      let y = startY - row * spacingY + Math.cos(seed * 0.7 + i * 1.3) * 6;
+
+      x = clamp(x, regionMinX + relationshipNodeRadius + 12, regionMaxX - relationshipNodeRadius - 12);
+      y = clamp(y, 140, anchorY - 180);
+
+      // Simple collision resolution within the same category region
+      for (let iter = 0; iter < 10; iter++) {
+        let moved = false;
+        for (const prev of placed) {
+          const dx = x - prev.x;
+          const dy = y - prev.y;
+          const d = Math.hypot(dx, dy) || 0.0001;
+          if (d < minDist) {
+            const push = (minDist - d) * 0.7;
+            const dir = i % 2 === 0 ? 1 : -1;
+            x += dir * push;
+            y -= push * 0.55;
+            moved = true;
+          }
+        }
+        x = clamp(x, regionMinX + relationshipNodeRadius + 12, regionMaxX - relationshipNodeRadius - 12);
+        y = clamp(y, 140, anchorY - 180);
+        if (!moved) break;
+      }
+
+      placed.push({ id: node.id, x, y });
+    }
+
+    return placed.reduce((acc, p) => {
+      acc[p.id] = { x: p.x, y: p.y };
+      return acc;
+    }, {} as Record<string, { x: number; y: number }>);
+  };
+
+  const leafPosById = categories.reduce((acc, cat) => {
+    const nodes = analysesByMode[cat.mode] || [];
+    const positions = buildLeafPositions(cat.mode, cat.x, cat.y, nodes);
+    for (const n of nodes) {
+      acc[n.id] = positions[n.id] || { x: cat.x, y: cat.y - 260 };
+    }
+    return acc;
+  }, {} as Record<string, { x: number; y: number }>);
+
+  const branchPath = (x1: number, y1: number, x2: number, y2: number) => {
+    const midY = (y1 + y2) / 2;
+    return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+  };
+
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-white p-4 fade-in overflow-hidden relative">
-        <h2 className="text-3xl font-bold text-gray-800 mb-4">{t('relationshipMapTitle')}</h2>
+    <div className={embedded ? "w-full h-full p-2 md:p-4 fade-in overflow-hidden relative" : "min-h-screen w-full flex flex-col items-center justify-center p-4 fade-in overflow-hidden relative"}>
+        <h2 className={embedded ? "text-2xl md:text-3xl font-black mb-4" : "text-3xl font-bold text-gray-800 mb-4"}>{t('relationshipMapTitle')}</h2>
         
-        <div className="relative w-[90vw] h-[90vw] max-w-5xl max-h-5xl">
+        <div className={embedded ? "relative w-full max-w-5xl mx-auto aspect-square" : "relative w-[90vw] h-[90vw] max-w-5xl max-h-5xl"}>
             <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
                 <defs>
-                     <filter id="glow">
-                        <feGaussianBlur stdDeviation="3.5" result="coloredBlur" />
-                        <feMerge>
-                            <feMergeNode in="coloredBlur" />
-                            <feMergeNode in="SourceGraphic" />
-                        </feMerge>
+                    <filter id="softShadow" x="-40%" y="-40%" width="180%" height="180%">
+                      <feDropShadow dx="0" dy="18" stdDeviation="14" floodColor="rgba(31,22,53,0.16)" />
                     </filter>
+
+                    <filter id="leafGlow" x="-40%" y="-40%" width="180%" height="180%">
+                      <feGaussianBlur stdDeviation="6" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+
+                    <linearGradient id="trunk" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="rgba(167, 119, 92, 0.26)" />
+                      <stop offset="100%" stopColor="rgba(167, 119, 92, 0.42)" />
+                    </linearGradient>
+
+                    {Object.values(RelationshipMode).map((m) => (
+                      <linearGradient key={m} id={`branch-${m}`} x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="rgba(167, 119, 92, 0.40)" />
+                        <stop offset="100%" stopColor={themeColors[m as RelationshipMode].stroke} />
+                      </linearGradient>
+                    ))}
                 </defs>
 
-                {/* Lines from Me to Categories */}
-                {categoryAnchors.map(anchor => (
-                    <line
-                        key={`line-to-${anchor.mode}`}
-                        x1={center.x}
-                        y1={center.y}
-                        x2={anchor.x}
-                        y2={anchor.y}
-                        stroke="#d1d5db"
-                        strokeWidth={6}
-                    />
+                {/* Trunk (double stroke for depth) */}
+                <path
+                  d={branchPath(mePos.x, mePos.y - (meNodeRadius + 10), center.x, trunkSplitY)}
+                  stroke="url(#trunk)"
+                  strokeWidth={28}
+                  strokeLinecap="round"
+                  fill="none"
+                  opacity={0.60}
+                />
+                <path
+                  d={branchPath(mePos.x, mePos.y - (meNodeRadius + 10), center.x, trunkSplitY)}
+                  stroke="url(#trunk)"
+                  strokeWidth={18}
+                  strokeLinecap="round"
+                  fill="none"
+                  opacity={0.92}
+                />
+
+                {/* Branches from Trunk to Categories */}
+                {categories.map((cat) => (
+                  <path
+                    key={`branch-to-${cat.mode}`}
+                    d={branchPath(center.x, trunkSplitY, cat.x, cat.y)}
+                    stroke={`url(#branch-${cat.mode})`}
+                    strokeWidth={14}
+                    strokeLinecap="round"
+                    fill="none"
+                    opacity={0.95}
+                  />
                 ))}
 
-                {/* Lines from Categories to People */}
-                {categoryAnchors.map(({ mode, x: anchorX, y: anchorY }) => {
-                    const groupAnalyses = analysesByMode[mode] || [];
-                    const numNodes = groupAnalyses.length;
+                {/* Branches from Categories to People */}
+                {categories.map(({ mode, x: anchorX, y: anchorY }) => {
+                  const groupAnalyses = analysesByMode[mode] || [];
+                  const numNodes = groupAnalyses.length;
 
-                    return groupAnalyses.map((node, index) => {
-                        let nodeX = anchorX;
-                        let nodeY = anchorY;
-                        if (numNodes > 0) {
-                            const angle = (index / numNodes) * 2 * Math.PI + (mode === RelationshipMode.FRIEND ? Math.PI / 4 : 0); // Offset to avoid overlap
-                            nodeX += clusterRadius * Math.cos(angle);
-                            nodeY += clusterRadius * Math.sin(angle);
-                        }
-                        return (
-                            <line
-                                key={`line-from-${mode}-to-${node.id}`}
-                                x1={anchorX}
-                                y1={anchorY}
-                                x2={nodeX}
-                                y2={nodeY}
-                                stroke="#d1d5db"
-                                strokeWidth={4}
-                            />
-                        );
-                    });
+                  return groupAnalyses.map((node, index) => {
+                    const p = leafPosById[node.id] || { x: anchorX, y: anchorY - 260 };
+                    return (
+                      <path
+                        key={`leaf-branch-${mode}-${node.id}`}
+                        d={branchPath(anchorX, anchorY - 10, p.x, p.y + 34)}
+                        stroke={`url(#branch-${mode})`}
+                        strokeWidth={8}
+                        strokeLinecap="round"
+                        fill="none"
+                        opacity={0.82}
+                      />
+                    );
+                  });
                 })}
 
-                {/* Center Node (Me) */}
-                <g transform={`translate(${center.x}, ${center.y})`} className="cursor-default">
-                    <circle r={meNodeRadius + 5} fill="white" filter="url(#glow)" />
-                    <circle r={meNodeRadius} fill="white" stroke="#8b5cf6" strokeWidth="6" />
-                    <text textAnchor="middle" dy=".3em" className="text-4xl font-bold fill-current text-gray-800">{t('me')}</text>
+                {/* Me Node */}
+                <g transform={`translate(${mePos.x}, ${mePos.y})`} className="cursor-default">
+                  <circle r={meNodeRadius + 10} fill="rgba(255,255,255,0.85)" filter="url(#softShadow)" />
+                  <circle r={meNodeRadius} fill="rgba(255,255,255,0.92)" stroke="rgba(255, 79, 179, 0.55)" strokeWidth="8" />
+                  <text textAnchor="middle" dy=".3em" className="text-4xl font-extrabold fill-current text-gray-800">{t('me')}</text>
                 </g>
 
                 {/* Category and Relationship Nodes */}
-                {categoryAnchors.map(({ mode, name, x: anchorX, y: anchorY }) => {
-                    const groupAnalyses = analysesByMode[mode] || [];
-                    const numNodes = groupAnalyses.length;
+                {categories.map(({ mode, name, x: anchorX, y: anchorY }) => {
+                  const groupAnalyses = analysesByMode[mode] || [];
+                  const numNodes = groupAnalyses.length;
 
-                    return (
-                        <g key={mode}>
-                            {/* Category Node */}
-                            <g transform={`translate(${anchorX}, ${anchorY})`} className="cursor-default">
-                                <circle
-                                    r={categoryNodeRadius}
-                                    fill="white"
-                                    stroke={themeColors[mode]}
-                                    strokeWidth="5"
-                                />
-                                <text
-                                    textAnchor="middle"
-                                    dy=".3em"
-                                    className="text-2xl font-bold"
-                                    style={{ fill: themeColors[mode] }}
-                                >
-                                    {name}
-                                </text>
-                            </g>
+                  return (
+                    <g key={mode}>
+                      {/* Category Node */}
+                      <g transform={`translate(${anchorX}, ${anchorY})`} className="cursor-default">
+                        <circle r={categoryNodeRadius + 10} fill="rgba(255,255,255,0.70)" filter="url(#softShadow)" />
+                        <circle r={categoryNodeRadius} fill={themeColors[mode].fill} stroke={themeColors[mode].stroke} strokeWidth="7" />
+                        <text textAnchor="middle" dy=".3em" className="text-2xl font-extrabold fill-current text-gray-800">
+                          {name}
+                        </text>
+                      </g>
 
-                            {/* Relationship Nodes */}
-                            {groupAnalyses.map((node, index) => {
-                                let nodeX = anchorX;
-                                let nodeY = anchorY;
-                                if (numNodes > 0) {
-                                    const angle = (index / numNodes) * 2 * Math.PI + (mode === RelationshipMode.FRIEND ? Math.PI / 4 : 0); // Offset to avoid overlap
-                                    nodeX += clusterRadius * Math.cos(angle);
-                                    nodeY += clusterRadius * Math.sin(angle);
-                                }
-                                return (
-                                    <g key={node.id} transform={`translate(${nodeX}, ${nodeY})`}
-                                       onClick={() => onSelect(node)}
-                                       className="cursor-pointer group">
-                                        <circle
-                                            r={relationshipNodeRadius + 5}
-                                            fill="white"
-                                            className="opacity-0 group-hover:opacity-100 smooth-transition"
-                                            style={{ filter: 'url(#glow)' }}
-                                        />
-                                        <circle
-                                            r={relationshipNodeRadius}
-                                            fill="white"
-                                            stroke={themeColors[node.mode]}
-                                            strokeWidth="6"
-                                            className="smooth-transition group-hover:scale-110"
-                                        />
-                                        <text textAnchor="middle" dy={-12} className="text-2xl font-bold fill-current text-gray-700">
-                                            {node.speaker2Name}
-                                        </text>
-                                         <text textAnchor="middle" dy={20} className="text-xl fill-current text-gray-500 font-semibold">
-                                            {node.result.intimacyScore}
-                                        </text>
-                                    </g>
-                                );
-                            })}
-                        </g>
-                    );
+                      {/* Relationship Nodes (Leaves/Fruit) */}
+                      {groupAnalyses.map((node, index) => {
+                        const p = leafPosById[node.id] || { x: anchorX, y: anchorY - 260 };
+                        const modeColor = themeColors[node.mode].stroke;
+                        const modeFill = themeColors[node.mode].fill;
+
+                        return (
+                          <g
+                            key={node.id}
+                            transform={`translate(${p.x}, ${p.y})`}
+                            onClick={() => onSelect(node)}
+                            className="cursor-pointer group"
+                          >
+                            <circle
+                              r={relationshipNodeRadius + 16}
+                              fill="rgba(255,255,255,0.55)"
+                              className="opacity-0 group-hover:opacity-100 smooth-transition"
+                              filter="url(#leafGlow)"
+                            />
+                            <circle r={relationshipNodeRadius + 10} fill="rgba(255,255,255,0.92)" filter="url(#softShadow)" />
+                            <circle
+                              r={relationshipNodeRadius}
+                              fill={modeFill}
+                              stroke={modeColor}
+                              strokeWidth="7"
+                              className="smooth-transition group-hover:scale-110"
+                            />
+                            <text textAnchor="middle" dy={-10} className="text-2xl font-extrabold fill-current text-gray-800">
+                              {node.speaker2Name}
+                            </text>
+                            <text textAnchor="middle" dy={24} className="text-xl fill-current text-gray-600 font-bold">
+                              {node.result.intimacyScore}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </g>
+                  );
                 })}
             </svg>
         </div>
         
-        <button
-            onClick={onBack}
-            className="absolute top-6 left-6 flex items-center px-4 py-2 bg-white text-gray-700 font-semibold rounded-full shadow-md hover:bg-gray-100 smooth-transition"
-        >
-            <ArrowLeftIcon className="w-5 h-5 mr-2" />
-            {t('backToHome')}
-        </button>
+        {showBackButton && !embedded && (
+            <button
+                onClick={onBack}
+                className="itda-btn itda-btn-secondary absolute top-6 left-6 px-4 py-2 smooth-transition"
+            >
+                <ArrowLeftIcon className="w-5 h-5 mr-2" />
+                {t('backToHome')}
+            </button>
+        )}
 
         <button
             onClick={() => setIsModalOpen(true)}
-            className="absolute bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-lg flex items-center justify-center smooth-transition hover:scale-110 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-purple-300"
+            className="absolute bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-lg flex items-center justify-center smooth-transition hover:scale-110 hover:shadow-xl focus:outline-none"
             aria-label={t('addPerson')}
         >
             <PlusIcon className="w-8 h-8" />
