@@ -345,6 +345,7 @@ const App: React.FC = () => {
               <AnalysisDashboard
                 result={currentAnalysis.result}
                 mode={currentAnalysis.mode}
+                chatHistory={currentHistory}
               />
             ) : (
               <CounselChat
