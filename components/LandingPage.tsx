@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import { AnalyzeIcon, HeartIcon, SparklesIcon, UsersIcon } from './icons';
+import { AnalyzeIcon, HeartIcon, SparklesIcon, RelationshipNodesIcon } from './icons';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -145,7 +145,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                     <FeatureCard icon={<AnalyzeIcon className="w-10 h-10"/>} title={t('feature1Title')} description={t('feature1Desc')} />
                     <FeatureCard icon={<HeartIcon className="w-10 h-10"/>} title={t('feature2Title')} description={t('feature2Desc')} />
                     <FeatureCard icon={<SparklesIcon className="w-10 h-10"/>} title={t('feature3Title')} description={t('feature3Desc')} />
-                    <FeatureCard icon={<UsersIcon className="w-10 h-10"/>} title={t('feature4Title')} description={t('feature4Desc')} />
+                    <FeatureCard icon={<RelationshipNodesIcon className="w-10 h-10"/>} title={t('feature4Title')} description={t('feature4Desc')} />
                 </div>
                 
                 <div className="itda-card-soft mt-20 md:mt-28 p-8">

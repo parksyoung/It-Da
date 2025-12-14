@@ -7,7 +7,7 @@ import LandingPage from './components/LandingPage';
 import RelationshipMap from './components/RelationshipMap';
 import SelfAnalysis from './components/SelfAnalysis';
 
-import { HeartIcon, MapIcon, SparklesIcon, ArrowLeftIcon, PlusIcon, UserIcon } from './components/icons';
+import { HeartIcon, RelationshipNodesIcon, SparklesIcon, ArrowLeftIcon, PlusIcon, UserIcon } from './components/icons';
 import { useLanguage } from './contexts/LanguageContext';
 import { useAuth } from './contexts/AuthContext';
 import ChatInputForm from './components/ChatInputForm';
@@ -510,7 +510,7 @@ const App: React.FC = () => {
             onClick={() => setView('map')}
             className={`itda-btn itda-btn-secondary w-full px-4 py-3 justify-start ${view === 'map' ? 'ring-2 ring-violet-200/60' : ''}`}
           >
-            <MapIcon className="w-5 h-5" />
+            <RelationshipNodesIcon className="w-5 h-5" />
             {t('relationshipMapTitle')}
           </button>
           <button
