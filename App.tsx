@@ -6,43 +6,14 @@ import { getPersonData, savePersonData } from './services/firebase';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import LandingPage from './components/LandingPage';
 import RelationshipMap from './components/RelationshipMap';
-import { SparklesIcon, ArrowLeftIcon, PlusIcon } from './components/icons';
+import { HeartIcon, MapIcon, SparklesIcon, ArrowLeftIcon, PlusIcon } from './components/icons';
 import { useLanguage } from './contexts/LanguageContext';
 import { useAuth } from './contexts/AuthContext';
 import ChatInputForm from './components/ChatInputForm';
+import CounselChat from './components/CounselChat';
 
 type View = 'landing' | 'map' | 'input' | 'dashboard';
-
-const LanguageToggle: React.FC = () => {
-    const { language, setLanguage } = useLanguage();
-    const toggleLanguage = () => setLanguage(language === 'ko' ? 'en' : 'ko');
-    return (
-        <button
-            onClick={toggleLanguage}
-            className="absolute top-4 right-24 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold text-gray-600 shadow-md hover:bg-gray-100 smooth-transition z-20"
-        >
-            {language === 'ko' ? 'EN' : '한국어'}
-        </button>
-    );
-};
-
-const UserInfo: React.FC = () => {
-    const { currentUser, logout } = useAuth();
-    
-    return (
-        <div className="absolute top-4 right-4 flex items-center gap-3 z-20">
-            <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold text-gray-700 shadow-md">
-                {currentUser?.email || currentUser?.displayName || '사용자'}
-            </div>
-            <button
-                onClick={logout}
-                className="bg-red-500/80 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold text-white shadow-md hover:bg-red-600 smooth-transition"
-            >
-                로그아웃
-            </button>
-        </div>
-    );
-};
+type DashboardTab = 'analysis' | 'counsel';
 
 const fileToGenerativePart = async (file: File) => {
     const base64EncodedDataPromise = new Promise<string>((resolve) => {
@@ -61,12 +32,17 @@ const App: React.FC = () => {
   const [analyses, setAnalyses] = useState<StoredAnalysis[]>([]);
   const [currentAnalysis, setCurrentAnalysis] = useState<StoredAnalysis | null>(null);
   const [prefilledData, setPrefilledData] = useState<{ name: string; mode: RelationshipMode } | null>(null);
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>('analysis');
+  const [currentHistory, setCurrentHistory] = useState<string[]>([]);
   
   const [isLoading, setIsLoading] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const { language, t } = useLanguage();
+  const { language, t, setLanguage } = useLanguage();
+  const { logout } = useAuth();
+
+  const toggleLanguage = () => setLanguage(language === 'ko' ? 'en' : 'ko');
 
   // Firestore에서 모든 분석 데이터 로드
   const loadAnalysesFromFirestore = async () => {
@@ -100,6 +76,12 @@ const App: React.FC = () => {
       loadAnalysesFromFirestore();
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser && view === 'landing') {
+      setView('map');
+    }
+  }, [currentUser, view]);
 
   const handleNewAnalysis = async (chatText: string, mode: RelationshipMode, speaker1Name: string, speaker2Name: string) => {
     if (!chatText.trim()) {
@@ -152,10 +134,13 @@ const App: React.FC = () => {
         result
       };
       setCurrentAnalysis(newAnalysis);
+      setCurrentHistory(updatedHistory);
+      setDashboardTab('analysis');
       setPrefilledData(null); // Clear prefilled data
       setView('dashboard'); // 분석 결과 페이지로 이동
     } catch (err: any) {
       let errorMessage = '알 수 없는 오류가 발생했습니다.';
+      const errorCode = err?.code;
       
       if (err instanceof Error) {
         errorMessage = err.message;
@@ -172,6 +157,10 @@ const App: React.FC = () => {
         errorMessage = '로그인이 필요합니다. 다시 로그인해주세요.';
       } else if (errorMessage.includes('Failed to analyze')) {
         errorMessage = '대화 분석에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      }
+
+      if (errorCode) {
+        errorMessage = `${errorMessage} (code: ${errorCode})`;
       }
       
       console.error('[App] Analysis error:', err);
@@ -216,9 +205,11 @@ const App: React.FC = () => {
           result: personData.analysis,
         };
         setCurrentAnalysis(updatedAnalysis);
+        setCurrentHistory(personData.history || []);
       } else {
         // 데이터가 없으면 기존 분석 사용
         setCurrentAnalysis(analysis);
+        setCurrentHistory([]);
       }
     } catch (err: any) {
       console.error('[App] Failed to load latest analysis:', err);
@@ -228,7 +219,9 @@ const App: React.FC = () => {
       }
       // 에러 발생 시 기존 분석 사용
       setCurrentAnalysis(analysis);
+      setCurrentHistory([]);
     }
+    setDashboardTab('analysis');
     setView('dashboard');
   };
 
@@ -237,79 +230,131 @@ const App: React.FC = () => {
     setView('input');
   };
 
+  const handleStartAddEmpty = () => {
+    setPrefilledData(null);
+    setView('input');
+  };
+
+  const sortedAnalyses = [...analyses].sort((a, b) => {
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+
   const renderContent = () => {
     switch (view) {
       case 'landing':
         return <LandingPage onStart={() => setView('map')} />;
       case 'map':
-        return <RelationshipMap analyses={analyses} onAdd={handleStartAdd} onSelect={handleSelectAnalysis} onBack={() => setView('landing')} />;
-      case 'input':
-        const title = prefilledData
-          ? t('chatInputTitleFor', { name: prefilledData.name })
-          : t('chatInputTitle');
         return (
-            <div className={`min-h-screen w-full smooth-transition bg-gradient-to-br from-purple-50 via-pink-50 to-white relative`}>
-                <button
-                    onClick={() => { setView('map'); setPrefilledData(null); }}
-                    className="absolute top-6 left-6 flex items-center px-4 py-2 bg-white text-gray-700 font-semibold rounded-full shadow-md hover:bg-gray-100 smooth-transition z-10"
-                >
-                    <ArrowLeftIcon className="w-5 h-5 mr-2" />
-                    {t('backToMap')}
-                </button>
-                <div className="container mx-auto px-4 py-16 md:py-20 flex flex-col items-center">
-                    <div className="text-center w-full">
-                        <h1 className="text-3xl lg:text-4xl font-bold text-gray-800 mb-2">{title}</h1>
-                        <p className="text-gray-600 mb-8">{t('chatInputSubtitle')}</p>
-                    </div>
-                    <ChatInputForm
-                        onAnalyze={handleNewAnalysis}
-                        isLoading={isLoading}
-                        isExtracting={isExtracting}
-                        handleImageUpload={handleImageUpload}
-                        prefilledData={prefilledData}
-                    />
-                    <p className="text-center text-sm text-gray-500 mt-6">{t('tip')}</p>
-                    {error && <div className="max-w-3xl w-full mx-auto mt-4 p-4 text-center text-red-700 bg-red-100 border border-red-400 rounded-lg fade-in">{error}</div>}
-                    {isLoading && (
-                        <div className="text-center p-10 fade-in">
-                            <SparklesIcon className={`w-12 h-12 text-purple-500 mx-auto animate-pulse`} />
-                            <p className="mt-4 text-lg font-semibold text-gray-700 whitespace-pre-line">{t('loadingMessage')}</p>
-                        </div>
-                    )}
+          <div className="itda-card p-4 md:p-6 h-full">
+            <RelationshipMap
+              analyses={analyses}
+              onAdd={handleStartAdd}
+              onSelect={handleSelectAnalysis}
+              onBack={() => setView('landing')}
+              embedded
+              showBackButton={false}
+            />
+          </div>
+        );
+      case 'input':
+        const title = prefilledData ? t('chatInputTitleFor', { name: prefilledData.name }) : t('chatInputTitle');
+        return (
+          <div className="h-full">
+            <div className="itda-card p-5 md:p-7">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-black text-gray-800 mb-1">{title}</h1>
+                  <p className="text-gray-600">{t('chatInputSubtitle')}</p>
                 </div>
+                <button
+                  onClick={() => { setView('map'); setPrefilledData(null); }}
+                  className="itda-btn itda-btn-secondary px-4 py-2 text-sm smooth-transition"
+                >
+                  <ArrowLeftIcon className="w-5 h-5" />
+                  {t('backToMap')}
+                </button>
+              </div>
             </div>
+
+            <div className="mt-5">
+              <ChatInputForm
+                onAnalyze={handleNewAnalysis}
+                isLoading={isLoading}
+                isExtracting={isExtracting}
+                handleImageUpload={handleImageUpload}
+                prefilledData={prefilledData}
+              />
+              <p className="text-center text-sm text-gray-500 mt-5">{t('tip')}</p>
+              {error && <div className="itda-alert itda-alert-error max-w-3xl w-full mx-auto mt-4 text-center fade-in">{error}</div>}
+              {isLoading && (
+                <div className="text-center p-10 fade-in">
+                  <SparklesIcon className={`w-12 h-12 text-purple-500 mx-auto animate-pulse`} />
+                  <p className="mt-4 text-lg font-semibold text-gray-700 whitespace-pre-line">{t('loadingMessage')}</p>
+                </div>
+              )}
+            </div>
+          </div>
         );
       case 'dashboard':
         if (!currentAnalysis) {
             setView('map'); // Should not happen, but as a fallback
             return null;
         }
-        const theme = RELATIONSHIP_THEMES[currentAnalysis.mode];
         return (
-            <div className={`min-h-screen w-full smooth-transition ${theme.light} relative`}>
-                <div className="container mx-auto px-4 py-8 pb-28">
-                    <AnalysisDashboard
-                        result={currentAnalysis.result}
-                        mode={currentAnalysis.mode}
-                    />
-                    <div className="text-center mt-8">
-                        <button
-                            onClick={() => setView('map')}
-                            className="px-6 py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-100 smooth-transition"
-                        >
-                            {t('backToMap')}
-                        </button>
-                    </div>
+          <div className="h-full">
+            <div className="itda-card p-5 md:p-7 mb-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-black text-gray-800 mb-1">{currentAnalysis.speaker2Name}</h1>
+                  <p className="text-gray-600">{t('analysisResults')}</p>
                 </div>
-                <button
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setView('map')}
+                    className="itda-btn itda-btn-secondary px-4 py-2 text-sm smooth-transition"
+                  >
+                    {t('backToMap')}
+                  </button>
+                  <button
                     onClick={() => handleStartAdd(currentAnalysis.speaker2Name, currentAnalysis.mode)}
-                    className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-lg flex items-center justify-center smooth-transition hover:scale-110 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-purple-300 z-10"
-                    aria-label={t('addMoreConversation')}
+                    className="itda-btn itda-btn-primary px-4 py-2 text-sm smooth-transition"
+                  >
+                    <PlusIcon className="w-5 h-5" />
+                    {t('addMoreConversation')}
+                  </button>
+                </div>
+              </div>
+              <div className="mt-5 flex items-center gap-2">
+                <button
+                  onClick={() => setDashboardTab('analysis')}
+                  className={`itda-btn itda-btn-secondary px-4 py-2 text-sm ${dashboardTab === 'analysis' ? 'ring-2 ring-violet-200/60' : ''}`}
                 >
-                    <PlusIcon className="w-8 h-8" />
+                  분석
                 </button>
+                <button
+                  onClick={() => setDashboardTab('counsel')}
+                  className={`itda-btn itda-btn-secondary px-4 py-2 text-sm ${dashboardTab === 'counsel' ? 'ring-2 ring-violet-200/60' : ''}`}
+                >
+                  상담
+                </button>
+              </div>
             </div>
-        )
+
+            {dashboardTab === 'analysis' ? (
+              <AnalysisDashboard
+                result={currentAnalysis.result}
+                mode={currentAnalysis.mode}
+              />
+            ) : (
+              <CounselChat
+                history={currentHistory}
+                mode={currentAnalysis.mode}
+                speaker1Name={t('me')}
+                speaker2Name={currentAnalysis.speaker2Name}
+              />
+            )}
+          </div>
+        );
       default:
         return <LandingPage onStart={() => setView('map')} />;
     }
@@ -319,18 +364,104 @@ const App: React.FC = () => {
   if (!currentUser) {
     return (
       <>
-        <LanguageToggle />
         <LandingPage onStart={() => setView('map')} />
       </>
     );
   }
 
   return (
-    <>
-      <LanguageToggle />
-      <UserInfo />
-      {renderContent()}
-    </>
+    <div className="itda-shell">
+      <aside className="itda-sidebar itda-surface">
+        <div className="px-4 py-4">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-11 h-11 rounded-2xl flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(197,139,215,0.22), rgba(126,162,200,0.18))',
+                border: '1px solid rgba(43,36,51,0.10)',
+                boxShadow: '0 18px 40px rgba(43,36,51,0.10)',
+              }}
+            >
+              <HeartIcon className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-extrabold uppercase tracking-widest text-gray-500">It-Da</div>
+              <div className="text-2xl font-black text-gray-800 leading-tight truncate">Relationship Lab</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 pb-4 space-y-3">
+          <button
+            onClick={() => setView('map')}
+            className={`itda-btn itda-btn-secondary w-full px-4 py-3 justify-start ${view === 'map' ? 'ring-2 ring-violet-200/60' : ''}`}
+          >
+            <MapIcon className="w-5 h-5" />
+            {t('relationshipMapTitle')}
+          </button>
+          <button
+            onClick={handleStartAddEmpty}
+            className={`itda-btn itda-btn-primary w-full px-4 py-3 justify-start ${view === 'input' ? 'ring-2 ring-violet-200/60' : ''}`}
+          >
+            <PlusIcon className="w-5 h-5" />
+            {t('addPerson')}
+          </button>
+        </div>
+
+        <div className="px-4 pb-4">
+          <div className="text-xs uppercase tracking-widest text-gray-500 mb-3">Recent</div>
+          <div className="space-y-2">
+            {sortedAnalyses.length === 0 ? (
+              <div className="text-sm text-gray-500">{t('tip')}</div>
+            ) : (
+              sortedAnalyses.slice(0, 12).map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => handleSelectAnalysis(a)}
+                  className={`itda-note-item ${currentAnalysis?.id === a.id ? 'is-active' : ''}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 pl-3">
+                      <div className="font-extrabold text-gray-800 truncate">{a.speaker2Name}</div>
+                      <div className="text-xs text-gray-500 truncate">{new Date(a.date).toLocaleString()}</div>
+                    </div>
+                    <div className="itda-pill">{a.result.intimacyScore}</div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      </aside>
+
+      <div className="itda-shell-main">
+        <header className="itda-topbar itda-surface">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleLanguage}
+              className="itda-btn itda-btn-secondary px-4 py-2 text-sm smooth-transition"
+            >
+              {language === 'ko' ? 'EN' : '한국어'}
+            </button>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="itda-btn itda-btn-secondary px-4 py-2 text-sm">
+              {currentUser?.email || currentUser?.displayName || '사용자'}
+            </div>
+            <button
+              onClick={logout}
+              className="itda-btn itda-btn-danger px-4 py-2 text-sm smooth-transition"
+            >
+              로그아웃
+            </button>
+          </div>
+        </header>
+
+        <main className="itda-main">
+          {renderContent()}
+        </main>
+      </div>
+    </div>
   );
 };
 

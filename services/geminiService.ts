@@ -3,11 +3,12 @@ import { AnalysisResult, RelationshipMode, SimulationParams, SimulationResult } 
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-if (!apiKey) {
-  throw new Error("VITE_GEMINI_API_KEY environment variable is not set");
-}
-
-const ai = new GoogleGenAI({ apiKey });
+const getAi = () => {
+  if (!apiKey) {
+    throw new Error('Gemini API 키가 설정되지 않았습니다. .env.local에 VITE_GEMINI_API_KEY를 추가해주세요.');
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 const analysisSchema = {
   type: Type.OBJECT,
@@ -54,7 +55,6 @@ const analysisSchema = {
                 type: Type.OBJECT,
                 properties: {
                     name: { type: Type.STRING, description: 'Name of the first speaker.' },
-                    // FIX: Removed `nullable: true` as it is not a valid property in the schema. The model can return null for the 'time' field.
                     time: { type: Type.NUMBER, description: 'Average response time in minutes for speaker 1. Null if cannot be calculated.' },
                 },
                 required: ['name', 'time']
@@ -63,7 +63,6 @@ const analysisSchema = {
                 type: Type.OBJECT,
                 properties: {
                     name: { type: Type.STRING, description: 'Name of the second speaker.' },
-                    // FIX: Removed `nullable: true` as it is not a valid property in the schema. The model can return null for the 'time' field.
                     time: { type: Type.NUMBER, description: 'Average response time in minutes for speaker 2. Null if cannot be calculated.' },
                 },
                 required: ['name', 'time']
@@ -150,6 +149,7 @@ export const analyzeConversation = async (historyString: string, mode: Relations
   `;
 
   try {
+    const ai = getAi();
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -177,6 +177,58 @@ export const analyzeChat = async (chatText: string, mode: RelationshipMode, lang
   return analyzeConversation(chatText, mode, language);
 };
 
+export const counselConversation = async (
+  historyString: string,
+  userQuestion: string,
+  mode: RelationshipMode,
+  language: 'ko' | 'en',
+  speaker1Name?: string,
+  speaker2Name?: string
+): Promise<string> => {
+  const trimmedQuestion = userQuestion?.trim();
+  if (!trimmedQuestion) {
+    throw new Error(language === 'ko' ? '질문을 입력해주세요.' : 'Please enter a question.');
+  }
+
+  const maxChars = 16000;
+  const safeHistory = (historyString || '').slice(-maxChars);
+
+  const prompt = `
+You are 'It-Da', a warm, practical relationship counseling assistant.
+
+IMPORTANT:
+- Answer in ${language === 'ko' ? 'Korean' : 'English'}.
+- Be empathetic but concrete: give step-by-step suggestions, example messages, and what to avoid.
+- Use the conversation history as context, but do not hallucinate facts not present.
+- If the user asks for harmful/illegal actions, refuse and offer safer alternatives.
+
+Context:
+- Relationship Mode: ${mode}
+- Speaker 1: ${speaker1Name || 'User'}
+- Speaker 2: ${speaker2Name || 'Partner'}
+
+Conversation history (may contain multiple sessions over time):
+---
+${safeHistory}
+---
+
+User question:
+${trimmedQuestion}
+`;
+
+  try {
+    const ai = getAi();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+
+    return response.text.trim();
+  } catch (error) {
+    console.error('Error counseling conversation:', error);
+    throw new Error(language === 'ko' ? '상담 답변 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' : 'Failed to generate an answer. Please try again later.');
+  }
+};
 
 const simulationSchema = {
     type: Type.OBJECT,
@@ -218,6 +270,7 @@ export const simulateChange = async (
   `;
   
   try {
+    const ai = getAi();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
@@ -247,6 +300,7 @@ export const extractTextFromImage = async (imageBase64: string, mimeType: string
   };
 
   try {
+    const ai = getAi();
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: { parts: [imagePart, textPart] },

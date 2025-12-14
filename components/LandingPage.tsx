@@ -8,7 +8,7 @@ interface LandingPageProps {
 }
 
 const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; description: string; }> = ({ icon, title, description }) => (
-    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-white/50 text-center flex flex-col items-center smooth-transition hover:-translate-y-2 hover:shadow-xl">
+    <div className="itda-card-soft p-6 text-center flex flex-col items-center smooth-transition hover:-translate-y-2 hover:shadow-xl">
         <div className="mb-4 text-purple-500">{icon}</div>
         <h3 className="text-xl font-bold text-gray-800 mb-2">{title}</h3>
         <p className="text-gray-600 text-sm">{description}</p>
@@ -21,7 +21,6 @@ const ProblemCard: React.FC<{ title: string; description: string; color: string;
         <p className="text-gray-600 mt-2 max-w-xs mx-auto">{description}</p>
     </div>
 );
-
 
 const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
     const { t } = useLanguage();
@@ -37,22 +36,53 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             onStart();
         } catch (err: any) {
             let errorMessage = 'Google 로그인에 실패했습니다.';
-            if (err.code === 'auth/popup-closed-by-user') {
+
+            const code = err?.code;
+            const message = err instanceof Error ? err.message : err?.message;
+
+            if (code === 'auth/popup-closed-by-user') {
                 errorMessage = '로그인 팝업이 닫혔습니다.';
-            } else if (err.code === 'auth/popup-blocked') {
+            } else if (code === 'auth/popup-blocked') {
                 errorMessage = '팝업이 차단되었습니다. 브라우저 설정을 확인해주세요.';
+            } else if (code === 'auth/unauthorized-domain') {
+                errorMessage = '허용되지 않은 도메인에서 로그인 시도했습니다. Firebase Authorized domains에 localhost를 추가해야 합니다.';
+            } else if (code === 'auth/operation-not-allowed') {
+                errorMessage = 'Firebase에서 Google 로그인이 비활성화되어 있습니다. Authentication > Sign-in method에서 Google을 활성화하세요.';
+            } else if (message) {
+                errorMessage = message;
             }
-            setError(errorMessage);
+
+            const details = code ? ` (code: ${code})` : '';
+            setError(errorMessage + details);
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen w-full bg-gradient-to-br from-purple-50 via-pink-50 to-white">
-            <div className="container mx-auto px-4 py-12 md:py-20 text-center fade-in">
-                <h1 className="text-5xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-500 pb-2">It-Da</h1>
-                <p className="text-xl md:text-2xl font-light text-gray-600 mt-2">From Interaction to Data</p>
+        <div className="min-h-screen w-full">
+            <div className="itda-container py-12 md:py-20 text-center fade-in">
+                <div className="mx-auto w-20 h-20 rounded-[28px] flex items-center justify-center relative"
+                    style={{
+                        background: 'linear-gradient(135deg, rgba(255,79,179,0.35), rgba(124,92,255,0.22))',
+                        border: '1px solid rgba(31,22,53,0.10)',
+                        boxShadow: '0 22px 60px rgba(255,79,179,0.18)',
+                    }}
+                >
+                    <HeartIcon className="w-10 h-10" />
+                    <div className="absolute -right-3 -top-3 w-8 h-8 rounded-2xl flex items-center justify-center"
+                        style={{
+                            background: 'rgba(255,255,255,0.75)',
+                            border: '1px solid rgba(31,22,53,0.10)',
+                            boxShadow: '0 18px 40px rgba(124,92,255,0.14)',
+                        }}
+                    >
+                        <SparklesIcon className="w-5 h-5 text-pink-500" />
+                    </div>
+                </div>
+
+                <h1 className="mt-6 text-5xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-pink-500 via-fuchsia-500 to-violet-600 pb-2">It-Da</h1>
+                <p className="text-xl md:text-2xl font-semibold text-gray-700 mt-2">관계를 더 다정하게, 더 똑똑하게</p>
                 <p className="mt-6 text-lg text-gray-700 max-w-2xl mx-auto">{t('landingTitle')}</p>
                 
                 {!currentUser ? (
@@ -60,7 +90,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                         <button
                             onClick={handleGoogleLogin}
                             disabled={isLoading}
-                            className="px-8 py-4 bg-white text-gray-700 font-bold rounded-full shadow-lg text-lg smooth-transition hover:scale-105 hover:shadow-xl border-2 border-gray-200 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="itda-btn itda-btn-secondary px-8 py-4 text-lg smooth-transition hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <svg className="w-6 h-6" viewBox="0 0 24 24">
                                 <path
@@ -83,7 +113,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                             {isLoading ? '로그인 중...' : 'Google로 시작하기'}
                         </button>
                         {error && (
-                            <div className="max-w-md w-full p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+                            <div className="itda-alert itda-alert-error max-w-md w-full text-sm">
                                 {error}
                             </div>
                         )}
@@ -92,7 +122,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                     <div className="mt-10 flex flex-col items-center gap-4">
                         <button
                             onClick={onStart}
-                            className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-full shadow-lg text-lg smooth-transition hover:scale-105 hover:shadow-xl"
+                            className="itda-btn itda-btn-primary px-8 py-4 text-lg smooth-transition hover:scale-[1.02]"
                         >
                             <SparklesIcon className="w-6 h-6 inline-block mr-2" />
                             {t('landingCTA')}
@@ -118,12 +148,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                     <FeatureCard icon={<UsersIcon className="w-10 h-10"/>} title={t('feature4Title')} description={t('feature4Desc')} />
                 </div>
                 
-                <div className="mt-20 md:mt-28 p-8 bg-white/50 rounded-3xl shadow-xl">
+                <div className="itda-card-soft mt-20 md:mt-28 p-8">
                     <h2 className="text-3xl font-bold text-gray-800">{t('whyTitle')}</h2>
                     <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-10">
                         <ProblemCard title={t('problem1Title')} description={t('problem1Desc')} color="text-pink-500" />
-                        <ProblemCard title={t('problem2Title')} description={t('problem2Desc')} color="text-orange-500" />
-                        <ProblemCard title={t('problem3Title')} description={t('problem3Desc')} color="text-blue-500" />
+                        <ProblemCard title={t('problem2Title')} description={t('problem2Desc')} color="text-violet-500" />
+                        <ProblemCard title={t('problem3Title')} description={t('problem3Desc')} color="text-sky-500" />
                     </div>
                 </div>
 
