@@ -235,6 +235,44 @@ export const simulateChange = async (
   }
 };
 
+export const askRelationshipCoach = async (
+  question: string,
+  analysisResult: AnalysisResult,
+  mode: RelationshipMode,
+  language: 'ko' | 'en'
+): Promise<string> => {
+  const prompt = `
+    You are 'It-Da', a relationship coach AI. Based on the analysis results provided, answer the user's question about their relationship.
+    
+    **IMPORTANT: Your response MUST be in ${language === 'ko' ? 'Korean' : 'English'}.**
+    
+    Analysis Results:
+    - Relationship Mode: ${mode}
+    - Intimacy Score: ${analysisResult.intimacyScore}
+    - Summary: ${analysisResult.summary}
+    - Balance: ${analysisResult.balanceRatio.speaker1.name} (${analysisResult.balanceRatio.speaker1.percentage}%) vs ${analysisResult.balanceRatio.speaker2.name} (${analysisResult.balanceRatio.speaker2.percentage}%)
+    - Sentiment: Positive ${analysisResult.sentiment.positive}%, Negative ${analysisResult.sentiment.negative}%, Neutral ${analysisResult.sentiment.neutral}%
+    
+    User's Question: ${question}
+    
+    Please provide helpful, empathetic advice based on the analysis results. Focus on being a relationship coach, not a free-form chat assistant.
+    Keep your response concise and actionable.
+  `;
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+    return response.text;
+  } catch (error) {
+    console.error("Error asking relationship coach:", error);
+    throw new Error(language === 'ko' 
+      ? '답변을 생성하는 중 오류가 발생했습니다.' 
+      : 'An error occurred while generating a response.');
+  }
+};
+
 export const extractTextFromImage = async (imageBase64: string, mimeType: string): Promise<string> => {
   const imagePart = {
     inlineData: {
