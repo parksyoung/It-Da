@@ -48,7 +48,16 @@ body {
   position: relative;
   letter-spacing: -0.01em;
   line-height: 1.55;
-  font-family: 'Noto Sans KR', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
+  font-family: 'Noto Sans KR', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+svg {
+  font-family: inherit;
+}
+
+svg text,
+svg tspan {
+  font-family: inherit;
 }
 
 body::before {
