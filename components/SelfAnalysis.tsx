@@ -41,8 +41,175 @@ const getPersonalityCode = (data: SelfAnalysisData): PersonalityCode => {
   };
 };
 
-// Personality code to persona mapping (Korean)
-const personaMap: Record<string, PersonaInfo> = {
+// Personality code to persona mapping
+const getPersonaMap = (language: 'ko' | 'en'): Record<string, PersonaInfo> => {
+  if (language === 'en') {
+    return {
+      'I-F-Tx-Fst': {
+        name: 'Conversation Initiator',
+        subtitle: 'Empathetic leader who doesn\'t hold back',
+        summary: 'You don\'t hesitate to start conversations. You don\'t mind if the other person replies late. You prefer to share emotions first, but express them in a clean, text-focused style. You make an effort to respond quickly so you don\'t miss the other person\'s conversation flow.',
+        tips: [
+          'A slightly late reply doesn\'t mean they\'re not interested.',
+          'Showing empathy first opens hearts quickly.',
+          'A one-sentence reaction is enough, no need for long explanations.',
+        ],
+      },
+      'I-F-Em-Fst': {
+        name: 'Spontaneous Energy',
+        subtitle: 'Friendly leader who conveys emotions with emojis',
+        summary: 'You find it easy to start conversations. You convey emotions richly with emojis and various expressions. You lead the relationship tempo with quick responses, but sometimes taking a break can help the relationship.',
+        tips: [
+          'You prefer to react to short, clear messages.',
+          'A single emoji can convey enough emotion.',
+          'A simple "I\'m busy now, later" is enough if your reply is late.',
+        ],
+      },
+      'I-F-Tx-Slw': {
+        name: 'Thoughtful Empathetic Leader',
+        subtitle: 'Type who leads calmly with text',
+        summary: 'You don\'t hesitate to start conversations, but you reply at a leisurely pace. You prefer to share emotions first, but express them calmly in text. You prefer deep conversations and value sincere replies over quick responses.',
+        tips: [
+          'Showing empathy first opens hearts quickly.',
+          'You\'re ready to wait warmly even if replies are late.',
+          'You prefer clean, deep text-focused messages.',
+        ],
+      },
+      'I-F-Em-Slw': {
+        name: 'Warm Starter',
+        subtitle: 'Leisurely leader who shares emotions with emojis',
+        summary: 'You don\'t hesitate to start conversations, but you reply at a leisurely pace. You express emotions richly with emojis and value deep emotional sharing with your partner. You prefer sincere replies over quick responses.',
+        tips: [
+          'Empathy and emoji reactions are powerful.',
+          'You\'re ready to wait warmly even if replies are late.',
+          'Sharing emotions first can lead to deeper conversations.',
+        ],
+      },
+      'I-T-Tx-Fst': {
+        name: 'Efficient Solution Partner',
+        subtitle: 'Fast communicator focused on problem-solving',
+        summary: 'You actively lead conversations and prefer goal-oriented communication. You focus on solutions rather than emotions, and communicate clearly in text. You value efficiency with quick responses, but sometimes you should consider the other person\'s emotional needs.',
+        tips: [
+          'Direct speech may seem blunt, but don\'t interpret the intention as malicious.',
+          'Your desire to solve problems may come before emotional expression.',
+          'You prefer clear and specific feedback.',
+        ],
+      },
+      'I-T-Em-Fst': {
+        name: 'Realistic Humorous',
+        subtitle: 'Solution finder who lightens the mood with emojis',
+        summary: 'You like to take the lead in conversations and prefer realistic, solution-focused approaches. You use emojis to soften the mood while keeping the core message clear. You value efficient communication with quick responses, and your use of emojis shows consideration to soften what might seem blunt.',
+        tips: [
+          'You prefer conversations that are humorous but get to the point quickly.',
+          'A conclusion and emoji reaction are more effective than unnecessary explanations.',
+          'You can feel pressured by quick responses, so feel free to reply at your own pace.',
+        ],
+      },
+      'I-T-Tx-Slw': {
+        name: 'Careful Planner',
+        subtitle: 'Logical type who thinks before starting',
+        summary: 'You don\'t fear starting conversations, but you think carefully before sending messages. You\'re logical and solution-focused, and prefer clearly organized text messages. You take your time to organize your thoughts before having deep conversations.',
+        tips: [
+          'You prefer clear and logical explanations.',
+          'You\'re ready to receive replies after the other person has organized their thoughts.',
+          'Direct speech may seem blunt, but the intention is warm.',
+        ],
+      },
+      'I-T-Em-Slw': {
+        name: 'Leisurely Solution Leader',
+        subtitle: 'Careful type who lightens the mood with emojis',
+        summary: 'You don\'t fear starting conversations, but you think carefully before sending messages. You\'re solution-focused but use emojis to soften the mood, and prefer to reply at a leisurely pace. You value logical yet friendly communication.',
+        tips: [
+          'You prefer clear and logical explanations.',
+          'Your use of emojis shows consideration to soften the mood.',
+          'You\'re ready to receive replies after the other person has organized their thoughts.',
+        ],
+      },
+      'R-F-Tx-Fst': {
+        name: 'Quick Empathizer',
+        subtitle: 'Emotional type who reacts quickly with text',
+        summary: 'You prefer to react quickly with empathy to what the other person says rather than starting conversations. You read emotions well and express them calmly in text. You make an effort to respond quickly so you don\'t miss the other person\'s conversation flow.',
+        tips: [
+          'Showing empathy first opens hearts quickly.',
+          'You\'re the type who builds trust with quick replies.',
+          'You prefer clean text-focused messages.',
+        ],
+      },
+      'R-F-Em-Fst': {
+        name: 'Instant Reactor',
+        subtitle: 'Friendly type who empathizes quickly with emojis',
+        summary: 'You prefer to react instantly with emojis to the other person\'s messages rather than starting conversations. You express emotions richly with emojis, and your quick responses show consideration not to miss the other person\'s conversation flow.',
+        tips: [
+          'A single emoji can convey enough emotion.',
+          'You\'re the type who matches the relationship tempo with quick replies.',
+          'You prefer to react to short, clear messages.',
+        ],
+      },
+      'R-F-Tx-Slw': {
+        name: 'Quiet Observer',
+        subtitle: 'Type who reacts accurately when needed',
+        summary: 'You prefer to react thoughtfully to what the other person says rather than starting conversations. You read emotions well and empathize, but express them calmly in text. You prefer slow, deep conversations and reply after organizing your thoughts rather than responding immediately.',
+        tips: [
+          'A late reply doesn\'t mean lack of interest, but rather time needed to organize thoughts.',
+          'Showing empathy first opens hearts quickly.',
+          'You prefer deep, short messages over long conversations.',
+        ],
+      },
+      'R-F-Em-Slw': {
+        name: 'Warm Reactor',
+        subtitle: 'Careful partner who conveys warmth with emojis',
+        summary: 'You prefer to react warmly to the other person\'s messages rather than starting conversations. You express emotions richly with emojis, but reply at a leisurely pace. You value deep emotional sharing but prefer sincere replies over immediate responses.',
+        tips: [
+          'You\'re ready to react warmly even if replies are late.',
+          'A short empathetic message with an emoji is powerful.',
+          'Not demanding quick replies allows for more comfortable communication.',
+        ],
+      },
+      'R-T-Tx-Fst': {
+        name: 'Efficient Reactor',
+        subtitle: 'Fast and clear solution provider',
+        summary: 'You prefer to react quickly and logically to the other person\'s messages rather than starting conversations. You\'re solution-focused and prefer clearly organized text replies. You value efficient communication with quick responses, but sometimes emotional empathy would be nice too.',
+        tips: [
+          'You prefer clear and specific feedback.',
+          'You\'re the type who values efficiency with quick responses.',
+          'Direct speech may seem blunt, but don\'t interpret the intention as malicious.',
+        ],
+      },
+      'R-T-Em-Fst': {
+        name: 'Quick Solver',
+        subtitle: 'Efficient type who reacts smoothly with emojis',
+        summary: 'You prefer to react quickly to the other person\'s messages with a solution-focused approach rather than starting conversations. You use emojis to soften the mood while keeping the core message clear.',
+        tips: [
+          'You prefer conversations that are humorous yet logical.',
+          'You can feel pressured by quick responses, so feel free to reply at your own pace.',
+          'A conclusion and emoji reaction are more effective than unnecessary explanations.',
+        ],
+      },
+      'R-T-Tx-Slw': {
+        name: 'Careful Analyst',
+        subtitle: 'Logical type who thinks deeply before replying',
+        summary: 'You prefer to carefully analyze and react to what the other person says rather than starting conversations. You focus on logical solutions rather than emotions, and prefer clearly organized text messages. You reply at a leisurely pace after organizing your thoughts.',
+        tips: [
+          'A late reply means you\'re thinking carefully.',
+          'You prefer logical and clear explanations.',
+          'Direct speech may seem blunt, but the intention is warm.',
+        ],
+      },
+      'R-T-Em-Slw': {
+        name: 'Leisurely Solver',
+        subtitle: 'Careful type who softens the mood with emojis',
+        summary: 'You prefer to observe situations and react when needed rather than starting conversations. You\'re solution-focused but use emojis to soften the mood, and prefer to reply at a leisurely pace.',
+        tips: [
+          'A late reply means time is needed to organize thoughts.',
+          'You prefer conversations that are humorous yet logical.',
+          'Not demanding quick replies allows for more comfortable communication.',
+        ],
+      },
+    };
+  }
+  
+  // Korean version
+  return {
   'I-F-Tx-Fst': {
     name: '먼저 건네는 대화가',
     subtitle: '말을 아끼지 않는 공감 리더',
@@ -203,12 +370,14 @@ const personaMap: Record<string, PersonaInfo> = {
       '무리하게 빠른 답장을 요구하지 않으면 더 편하게 소통할 수 있어요.',
     ],
   },
+  };
 };
 
 // Get persona info for a personality code
-const getPersonaInfo = (code: PersonalityCode): PersonaInfo => {
+const getPersonaInfo = (code: PersonalityCode, language: 'ko' | 'en'): PersonaInfo => {
   const codeString = `${code.initiative}-${code.emotion}-${code.expression}-${code.tempo}`;
-  return personaMap[codeString] || personaMap['I-F-Tx-Fst'];
+  const map = getPersonaMap(language);
+  return map[codeString] || map['I-F-Tx-Fst'];
 };
 
 interface AxisProps {
@@ -448,7 +617,8 @@ const SelfAnalysis: React.FC = () => {
       }
 
       // Step 2: Combine all conversations into a single string
-      const combinedHistory = histories.join('\n\n--- 다른 사람과의 대화 ---\n\n');
+      const separatorText = `--- ${t('conversationSeparator')} ---`;
+      const combinedHistory = histories.join(`\n\n${separatorText}\n\n`);
 
       // Step 3: Analyze self conversation style using dedicated self-analysis function
       // This is completely separate from analyzeConversation (person-specific)
@@ -551,18 +721,12 @@ const SelfAnalysis: React.FC = () => {
   }
 
   const personalityCode = getPersonalityCode(analysisData);
-  const persona = getPersonaInfo(personalityCode);
+  const persona = getPersonaInfo(personalityCode, language);
 
   return (
     <div className="w-full max-w-5xl mx-auto p-4 md:p-6 space-y-6 fade-in">
-      {/* Header with re-analyze button */}
-      <div className="itda-card p-5 flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-black text-gray-800">
-            {t('selfAnalysisTitle')}
-          </h2>
-          <p className="text-gray-600 mt-1">{t('selfAnalysisDescription')}</p>
-        </div>
+      {/* Re-analyze button (header removed, only button remains) */}
+      <div className="flex justify-end">
         <button
           onClick={handleAnalyze}
           disabled={isAnalyzing}
@@ -573,7 +737,7 @@ const SelfAnalysis: React.FC = () => {
       </div>
 
       {/* Show quota error message if present (non-blocking) */}
-      {error && error.includes('오늘의 AI 분석 사용량') && (
+      {error && error.includes(t('quotaExceeded')) && (
         <div className="itda-card p-4 bg-yellow-50 border-yellow-200 border-2">
           <div className="text-yellow-700 text-sm font-medium text-center">
             {error}
@@ -582,7 +746,7 @@ const SelfAnalysis: React.FC = () => {
       )}
 
       {/* Personality Header */}
-      <div className="itda-card p-8 md:p-10 text-center bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 border-2 border-purple-300 shadow-2xl">
+      <div className="itda-card p-8 md:p-10 text-center bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 border-2 border-purple-300 shadow-2xl -mt-2">
         <div className="mb-6">
           <PersonalityBadge code={personalityCode} />
         </div>

@@ -8,9 +8,9 @@ interface LandingPageProps {
 }
 
 const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; description: string; }> = ({ icon, title, description }) => (
-    <div className="itda-card-soft p-6 text-center flex flex-col items-center smooth-transition hover:-translate-y-2 hover:shadow-xl">
-        <div className="mb-4 text-purple-500">{icon}</div>
-        <h3 className="text-xl font-bold text-gray-800 mb-2">{title}</h3>
+    <div className="itda-card-soft p-5 text-center flex flex-col items-center smooth-transition hover:-translate-y-2 hover:shadow-xl" style={{ transform: 'scale(1.05)' }}>
+        <div className="mb-2.5 text-purple-500">{icon}</div>
+        <h3 className="text-xl font-bold text-gray-800 mb-1.5">{title}</h3>
         <p className="text-gray-600 text-sm">{description}</p>
     </div>
 );
@@ -18,7 +18,7 @@ const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; description:
 const ProblemCard: React.FC<{ title: string; description: string; color: string; }> = ({ title, description, color }) => (
     <div className="text-center">
         <h4 className={`text-lg font-bold ${color}`}>{title}</h4>
-        <p className="text-gray-600 mt-2 max-w-xs mx-auto">{description}</p>
+        <p className="text-gray-600 mt-1.5 text-base leading-relaxed max-w-xs mx-auto">{description}</p>
     </div>
 );
 
@@ -60,33 +60,33 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
     };
 
     return (
-        <div className="min-h-screen w-full">
-            <div className="itda-container py-12 md:py-20 text-center fade-in">
-                <div className="mx-auto w-20 h-20 rounded-[28px] flex items-center justify-center relative"
+        <div className="h-screen w-full overflow-y-hidden">
+            <div className="itda-container pt-24 md:pt-28 pb-4 md:pb-6 text-center fade-in h-full flex flex-col justify-start">
+                <div className="mx-auto w-16 h-16 rounded-[24px] flex items-center justify-center relative"
                     style={{
                         background: 'linear-gradient(135deg, rgba(255,79,179,0.35), rgba(124,92,255,0.22))',
                         border: '1px solid rgba(31,22,53,0.10)',
                         boxShadow: '0 22px 60px rgba(255,79,179,0.18)',
                     }}
                 >
-                    <HeartIcon className="w-10 h-10" />
-                    <div className="absolute -right-3 -top-3 w-8 h-8 rounded-2xl flex items-center justify-center"
+                    <HeartIcon className="w-8 h-8" />
+                    <div className="absolute -right-2 -top-2 w-6 h-6 rounded-xl flex items-center justify-center"
                         style={{
                             background: 'rgba(255,255,255,0.75)',
                             border: '1px solid rgba(31,22,53,0.10)',
                             boxShadow: '0 18px 40px rgba(124,92,255,0.14)',
                         }}
                     >
-                        <SparklesIcon className="w-5 h-5 text-pink-500" />
+                        <SparklesIcon className="w-4 h-4 text-pink-500" />
                     </div>
                 </div>
 
-                <h1 className="mt-6 text-5xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-pink-500 via-fuchsia-500 to-violet-600 pb-2">It-Da</h1>
-                <p className="text-xl md:text-2xl font-semibold text-gray-700 mt-2">{t('relationshipSmarter')}</p>
-                <p className="mt-6 text-lg text-gray-700 max-w-2xl mx-auto">{t('landingTitle')}</p>
+                <h1 className="mt-6 text-6xl md:text-7xl font-black bg-clip-text text-transparent bg-gradient-to-r from-pink-500 via-fuchsia-500 to-violet-600 pb-1">It-Da</h1>
+                <p className="text-xl md:text-2xl font-semibold text-gray-700 mt-1">{t('relationshipSmarter')}</p>
+                <p className="mt-3 text-lg md:text-xl text-gray-700 max-w-2xl mx-auto">{t('landingTitle')}</p>
                 
                 {!currentUser ? (
-                    <div className="mt-10 flex flex-col items-center gap-4">
+                    <div className="mt-6 flex flex-col items-center gap-3">
                         <button
                             onClick={handleGoogleLogin}
                             disabled={isLoading}
@@ -113,13 +113,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                             {isLoading ? t('loggingIn') : t('startWithGoogle')}
                         </button>
                         {error && (
-                            <div className="itda-alert itda-alert-error max-w-md w-full text-sm">
+                            <div className="itda-alert itda-alert-error max-w-md w-full text-xs">
                                 {error}
                             </div>
                         )}
                     </div>
                 ) : (
-                    <div className="mt-10 flex flex-col items-center gap-4">
+                    <div className="mt-6 flex flex-col items-center gap-3">
                         <button
                             onClick={onStart}
                             className="itda-btn itda-btn-primary px-8 py-4 text-lg smooth-transition hover:scale-[1.02]"
@@ -128,12 +128,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                             {t('landingCTA')}
                         </button>
                         <div className="flex items-center gap-3">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-xs text-gray-600">
                                 {t('loggedInAs', { name: currentUser.displayName || currentUser.email })}
                             </span>
                             <button
                                 onClick={logout}
-                                className="text-sm text-red-500 hover:text-red-700 font-medium"
+                                className="text-xs text-red-500 hover:text-red-700 font-medium"
                             >
                                 {t('logout')}
                             </button>
@@ -141,16 +141,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                     </div>
                 )}
 
-                <div className="mt-20 md:mt-28 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <FeatureCard icon={<AnalyzeIcon className="w-10 h-10"/>} title={t('feature1Title')} description={t('feature1Desc')} />
-                    <FeatureCard icon={<HeartIcon className="w-10 h-10"/>} title={t('feature2Title')} description={t('feature2Desc')} />
-                    <FeatureCard icon={<SparklesIcon className="w-10 h-10"/>} title={t('feature3Title')} description={t('feature3Desc')} />
-                    <FeatureCard icon={<RelationshipNodesIcon className="w-10 h-10"/>} title={t('feature4Title')} description={t('feature4Desc')} />
+                <div className="mt-4 md:mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <FeatureCard icon={<AnalyzeIcon className="w-9 h-9"/>} title={t('feature1Title')} description={t('feature1Desc')} />
+                    <FeatureCard icon={<RelationshipNodesIcon className="w-9 h-9"/>} title={t('feature4Title')} description={t('feature4Desc')} />
+                    <FeatureCard icon={<HeartIcon className="w-9 h-9"/>} title={t('feature2Title')} description={t('feature2Desc')} />
+                    <FeatureCard icon={<SparklesIcon className="w-9 h-9"/>} title={t('feature3Title')} description={t('feature3Desc')} />
                 </div>
                 
-                <div className="itda-card-soft mt-20 md:mt-28 p-8">
-                    <h2 className="text-3xl font-bold text-gray-800">{t('whyTitle')}</h2>
-                    <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-10">
+                <div className="itda-card-soft mt-6 md:mt-8 p-4 md:p-6" style={{ transform: 'scale(1.05)' }}>
+                    <h2 className="text-2xl md:text-3xl font-bold text-gray-800">{t('whyTitle')}</h2>
+                    <div className="mt-4 md:mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                         <ProblemCard title={t('problem1Title')} description={t('problem1Desc')} color="text-pink-500" />
                         <ProblemCard title={t('problem2Title')} description={t('problem2Desc')} color="text-violet-500" />
                         <ProblemCard title={t('problem3Title')} description={t('problem3Desc')} color="text-sky-500" />
