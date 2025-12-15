@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { StoredAnalysis, RelationshipMode } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { ArrowLeftIcon } from './icons';
 
 interface RelationshipMapProps {
@@ -14,6 +15,8 @@ interface RelationshipMapProps {
 
 const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onSelect, onDelete, onBack, embedded = false, showBackButton = true }) => {
   const { t } = useLanguage();
+  const { theme: appTheme } = useTheme();
+  const isDark = appTheme === 'dark';
 
   const width = 2000;
   const height = 1400;
@@ -159,6 +162,14 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onSelect, o
                       <feDropShadow dx="0" dy="18" stdDeviation="14" floodColor="rgba(31,22,53,0.16)" />
                     </filter>
 
+                    <filter id="textShadow" x="-60%" y="-60%" width="220%" height="220%">
+                      <feDropShadow dx="0" dy="2" stdDeviation="2.2" floodColor="rgba(0,0,0,0.55)" />
+                    </filter>
+
+                    <filter id="textSoft" x="-60%" y="-60%" width="220%" height="220%">
+                      <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodColor="rgba(17,24,39,0.18)" />
+                    </filter>
+
                     <filter id="leafGlow" x="-40%" y="-40%" width="180%" height="180%">
                       <feGaussianBlur stdDeviation="6" result="blur" />
                       <feMerge>
@@ -182,6 +193,25 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onSelect, o
                       />
                       <feMerge>
                         <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+
+                    <filter id="orbitGlow" x="-60%" y="-60%" width="220%" height="220%">
+                      <feGaussianBlur stdDeviation="3.2" result="blur" />
+                      <feColorMatrix
+                        in="blur"
+                        type="matrix"
+                        values="
+                          1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 0.65 0
+                        "
+                        result="softBlur"
+                      />
+                      <feMerge>
+                        <feMergeNode in="softBlur" />
                         <feMergeNode in="SourceGraphic" />
                       </feMerge>
                     </filter>
@@ -233,15 +263,15 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onSelect, o
                     </radialGradient>
 
                     <linearGradient id="orbitRing" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="rgba(17, 24, 39, 0.10)" />
-                      <stop offset="55%" stopColor="rgba(17, 24, 39, 0.18)" />
-                      <stop offset="100%" stopColor="rgba(17, 24, 39, 0.08)" />
+                      <stop offset="0%" stopColor={isDark ? 'rgba(244, 242, 255, 0.12)' : 'rgba(99, 102, 241, 0.10)'} />
+                      <stop offset="55%" stopColor={isDark ? 'rgba(244, 242, 255, 0.22)' : 'rgba(168, 85, 247, 0.14)'} />
+                      <stop offset="100%" stopColor={isDark ? 'rgba(244, 242, 255, 0.10)' : 'rgba(59, 130, 246, 0.09)'} />
                     </linearGradient>
 
                     <linearGradient id="glassLine" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="rgba(17, 24, 39, 0.05)" />
-                      <stop offset="55%" stopColor="rgba(17, 24, 39, 0.22)" />
-                      <stop offset="100%" stopColor="rgba(17, 24, 39, 0.05)" />
+                      <stop offset="0%" stopColor={isDark ? 'rgba(244, 242, 255, 0.08)' : 'rgba(99, 102, 241, 0.06)'} />
+                      <stop offset="55%" stopColor={isDark ? 'rgba(244, 242, 255, 0.22)' : 'rgba(168, 85, 247, 0.16)'} />
+                      <stop offset="100%" stopColor={isDark ? 'rgba(244, 242, 255, 0.08)' : 'rgba(59, 130, 246, 0.06)'} />
                     </linearGradient>
 
                     {Object.values(RelationshipMode).map((m) => (
@@ -262,27 +292,71 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onSelect, o
                 <ellipse cx={width * 0.50} cy={height * 0.50} rx={width * 0.35} ry={height * 0.35} fill="url(#glassBlobBlue)" opacity="0.3" />
 
                 <g opacity={0.92}>
-                  <ellipse cx={center.x} cy={center.y} rx={(peopleBaseRingR + 210) * layoutStretchX} ry={peopleBaseRingR + 210} fill="none" stroke="url(#orbitRing)" strokeWidth={3} opacity={0.26} />
-                  <ellipse cx={center.x} cy={center.y} rx={peopleBaseRingR * layoutStretchX} ry={peopleBaseRingR} fill="none" stroke="url(#orbitRing)" strokeWidth={4} opacity={0.36} strokeDasharray="10 18">
+                  <ellipse
+                    cx={center.x}
+                    cy={center.y}
+                    rx={(peopleBaseRingR + 210) * layoutStretchX}
+                    ry={peopleBaseRingR + 210}
+                    fill="none"
+                    stroke="url(#orbitRing)"
+                    strokeWidth={3}
+                    opacity={isDark ? 0.42 : 0.26}
+                    filter={isDark ? 'url(#orbitGlow)' : undefined}
+                  />
+                  <ellipse
+                    cx={center.x}
+                    cy={center.y}
+                    rx={peopleBaseRingR * layoutStretchX}
+                    ry={peopleBaseRingR}
+                    fill="none"
+                    stroke="url(#orbitRing)"
+                    strokeWidth={4}
+                    opacity={isDark ? 0.52 : 0.36}
+                    strokeDasharray="10 18"
+                    filter={isDark ? 'url(#orbitGlow)' : undefined}
+                  >
                     <animateTransform attributeName="transform" type="rotate" from={`0 ${center.x} ${center.y}`} to={`360 ${center.x} ${center.y}`} dur="38s" repeatCount="indefinite" />
                   </ellipse>
-                  <ellipse cx={center.x} cy={center.y} rx={categoryRingR * layoutStretchX} ry={categoryRingR} fill="none" stroke="url(#orbitRing)" strokeWidth={6} opacity={0.32} strokeDasharray="2 14">
+                  <ellipse
+                    cx={center.x}
+                    cy={center.y}
+                    rx={categoryRingR * layoutStretchX}
+                    ry={categoryRingR}
+                    fill="none"
+                    stroke="url(#orbitRing)"
+                    strokeWidth={6}
+                    opacity={isDark ? 0.46 : 0.32}
+                    strokeDasharray="2 14"
+                    filter={isDark ? 'url(#orbitGlow)' : undefined}
+                  >
                     <animateTransform attributeName="transform" type="rotate" from={`360 ${center.x} ${center.y}`} to={`0 ${center.x} ${center.y}`} dur="26s" repeatCount="indefinite" />
                   </ellipse>
                 </g>
 
                 {/* Branches from Trunk to Categories */}
                 {categories.map((cat) => (
-                  <path
-                    key={`branch-to-${cat.mode}`}
-                    d={smoothLink(mePos.x, mePos.y, cat.x, cat.y, 70)}
-                    stroke="url(#glassLine)"
-                    strokeWidth={7}
-                    strokeLinecap="round"
-                    fill="none"
-                    opacity={0.72}
-                    filter="url(#linkSoftShadow)"
-                  />
+                  <g key={`branch-to-${cat.mode}`}>
+                    {isDark && (
+                      <path
+                        d={smoothLink(mePos.x, mePos.y, cat.x, cat.y, 70)}
+                        stroke="url(#glassLine)"
+                        strokeWidth={10}
+                        strokeLinecap="round"
+                        fill="none"
+                        opacity={0.22}
+                        filter="url(#linkGlow)"
+                      />
+                    )}
+                    <path
+                      d={smoothLink(mePos.x, mePos.y, cat.x, cat.y, 70)}
+                      stroke={isDark ? 'url(#glassLine)' : `url(#branch-${cat.mode})`}
+                      strokeWidth={isDark ? 7.5 : 6.5}
+                      strokeLinecap="round"
+                      fill="none"
+                      opacity={isDark ? 0.82 : 0.62}
+                      filter="url(#linkSoftShadow)"
+                    />
+                  </g>
                 ))}
 
                 {/* Branches from Categories to People */}
@@ -293,30 +367,69 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onSelect, o
                   return groupAnalyses.map((node) => {
                     const p = leafPosById[node.id] || { x: anchorX, y: anchorY, angle };
                     return (
-                      <path
-                        key={`leaf-branch-${mode}-${node.id}`}
-                        d={smoothLink(anchorX, anchorY, p.x, p.y, bend)}
-                        stroke="url(#glassLine)"
-                        strokeWidth={6}
-                        strokeLinecap="round"
-                        fill="none"
-                        opacity={0.58}
-                        filter="url(#linkSoftShadow)"
-                      />
+                      <g key={`leaf-branch-${mode}-${node.id}`}>
+                        {isDark && (
+                          <path
+                            d={smoothLink(anchorX, anchorY, p.x, p.y, bend)}
+                            stroke="url(#glassLine)"
+                            strokeWidth={8.5}
+                            strokeLinecap="round"
+                            fill="none"
+                            opacity={0.18}
+                            filter="url(#linkGlow)"
+                          />
+                        )}
+                        <path
+                          d={smoothLink(anchorX, anchorY, p.x, p.y, bend)}
+                          stroke={isDark ? 'url(#glassLine)' : `url(#branch-${mode})`}
+                          strokeWidth={isDark ? 6.5 : 5.5}
+                          strokeLinecap="round"
+                          fill="none"
+                          opacity={isDark ? 0.70 : 0.55}
+                          filter="url(#linkSoftShadow)"
+                        />
+                      </g>
                     );
                   });
                 })}
 
                 {/* Me Node */}
                 <g transform={`translate(${mePos.x}, ${mePos.y})`} className="cursor-default">
-                  <circle r={meNodeRadius + 30} fill="rgba(255,255,255,0.38)" opacity={0.55} filter="url(#softShadow)">
+                  <circle
+                    r={meNodeRadius + 30}
+                    fill={isDark ? 'rgba(255,255,255,0.38)' : 'rgba(255,255,255,0.24)'}
+                    opacity={isDark ? 0.55 : 0.42}
+                    filter="url(#softShadow)"
+                  >
                     <animate attributeName="r" values={`${meNodeRadius + 18};${meNodeRadius + 30};${meNodeRadius + 18}`} dur="4.4s" repeatCount="indefinite" />
                     <animate attributeName="opacity" values="0.18;0.35;0.18" dur="4.4s" repeatCount="indefinite" />
                   </circle>
-                  <circle r={meNodeRadius + 12} fill="rgba(255,255,255,0.48)" filter="url(#softShadow)" />
-                  <circle r={meNodeRadius} fill="rgba(255,255,255,0.26)" stroke="rgba(255, 255, 255, 0.62)" strokeWidth="8" />
-                  <circle r={meNodeRadius - 8} fill="url(#meCore)" opacity={0.9} />
-                  <text textAnchor="middle" dy=".3em" className="text-4xl font-extrabold fill-current text-gray-900">{t('me')}</text>
+                  <circle
+                    r={meNodeRadius + 12}
+                    fill={isDark ? 'rgba(255,255,255,0.48)' : 'rgba(255,255,255,0.72)'}
+                    opacity={isDark ? 1 : 0.92}
+                    filter="url(#softShadow)"
+                  />
+                  <circle
+                    r={meNodeRadius}
+                    fill={isDark ? 'rgba(255,255,255,0.26)' : 'rgba(255,255,255,0.44)'}
+                    stroke={isDark ? 'rgba(255, 255, 255, 0.62)' : 'rgba(255, 255, 255, 0.78)'}
+                    strokeWidth={isDark ? 8 : 7}
+                  />
+                  <circle r={meNodeRadius - 8} fill="url(#meCore)" opacity={isDark ? 0.9 : 0.98} />
+                  <text
+                    textAnchor="middle"
+                    dy=".3em"
+                    className="text-4xl font-extrabold fill-current text-gray-900"
+                    filter={isDark ? 'url(#textShadow)' : 'url(#textSoft)'}
+                    style={
+                      isDark
+                        ? ({ paintOrder: 'stroke', stroke: 'rgba(0,0,0,0.55)', strokeWidth: 6, strokeLinejoin: 'round' } as React.CSSProperties)
+                        : ({ letterSpacing: '0.02em', textRendering: 'geometricPrecision' } as React.CSSProperties)
+                    }
+                  >
+                    {t('me')}
+                  </text>
                 </g>
 
                 {/* Category and Relationship Nodes */}
@@ -327,12 +440,42 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onSelect, o
                     <g key={mode}>
                       {/* Category Node */}
                       <g transform={`translate(${anchorX}, ${anchorY})`} className="cursor-default">
-                        <circle r={categoryNodeRadius + 22} fill="rgba(255,255,255,0.22)" opacity={0.60} filter="url(#softShadow)" />
-                        <circle r={categoryNodeRadius + 10} fill="rgba(255,255,255,0.34)" opacity={0.85} />
+                        <circle
+                          r={categoryNodeRadius + 22}
+                          fill={isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.18)'}
+                          opacity={isDark ? 0.60 : 0.46}
+                          filter="url(#softShadow)"
+                        />
+                        <circle
+                          r={categoryNodeRadius + 10}
+                          fill={isDark ? 'rgba(255,255,255,0.34)' : 'rgba(255,255,255,0.56)'}
+                          opacity={isDark ? 0.85 : 0.88}
+                        />
                         <circle r={categoryNodeRadius} fill={themeColors[mode].fill} stroke={themeColors[mode].stroke} strokeWidth="9" />
-                        <circle r={categoryNodeRadius + 4} fill="none" stroke="rgba(17, 24, 39, 0.18)" strokeWidth="2.5" strokeDasharray="3 9" opacity={0.75} />
-                        <circle r={categoryNodeRadius - 18} fill="rgba(255,255,255,0.20)" opacity={0.85} />
-                        <text textAnchor="middle" dy=".3em" className="text-2xl font-extrabold fill-current text-gray-900">
+                        <circle
+                          r={categoryNodeRadius + 4}
+                          fill="none"
+                          stroke={isDark ? 'rgba(17, 24, 39, 0.18)' : 'rgba(17, 24, 39, 0.12)'}
+                          strokeWidth={isDark ? 2.5 : 2.2}
+                          strokeDasharray="3 9"
+                          opacity={isDark ? 0.75 : 0.70}
+                        />
+                        <circle
+                          r={categoryNodeRadius - 18}
+                          fill={isDark ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.26)'}
+                          opacity={isDark ? 0.85 : 0.92}
+                        />
+                        <text
+                          textAnchor="middle"
+                          dy=".3em"
+                          className="text-2xl font-extrabold fill-current text-gray-900"
+                          filter={isDark ? 'url(#textShadow)' : 'url(#textSoft)'}
+                          style={
+                            isDark
+                              ? ({ paintOrder: 'stroke', stroke: 'rgba(0,0,0,0.55)', strokeWidth: 5, strokeLinejoin: 'round' } as React.CSSProperties)
+                              : ({ letterSpacing: '0.03em', textRendering: 'geometricPrecision' } as React.CSSProperties)
+                          }
+                        >
                           {name}
                         </text>
                       </g>
@@ -352,23 +495,52 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onSelect, o
                           >
                             <circle
                               r={relationshipNodeRadius + 14}
-                              fill="rgba(255,255,255,0.40)"
+                              fill={isDark ? 'rgba(255,255,255,0.40)' : 'rgba(255,255,255,0.24)'}
                               className="opacity-0 group-hover:opacity-100 smooth-transition"
                               filter="url(#softShadow)"
                             />
-                            <circle r={relationshipNodeRadius + 9} fill="rgba(255,255,255,0.62)" filter="url(#softShadow)" />
+                            <circle
+                              r={relationshipNodeRadius + 9}
+                              fill={isDark ? 'rgba(255,255,255,0.62)' : 'rgba(255,255,255,0.78)'}
+                              opacity={isDark ? 1 : 0.94}
+                              filter="url(#softShadow)"
+                            />
                             <circle
                               r={relationshipNodeRadius}
-                              fill="rgba(255,255,255,0.12)"
+                              fill={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.18)'}
                               stroke={modeColor}
                               strokeWidth="7"
                               className="smooth-transition group-hover:scale-110"
                             />
-                            <circle r={relationshipNodeRadius - 26} fill="rgba(255,255,255,0.14)" />
-                            <text textAnchor="middle" dy={-10} className="text-2xl font-extrabold fill-current text-gray-900">
+                            <circle
+                              r={relationshipNodeRadius - 26}
+                              fill={isDark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.16)'}
+                              opacity={isDark ? 1 : 0.92}
+                            />
+                            <text
+                              textAnchor="middle"
+                              dy={-10}
+                              className="text-2xl font-extrabold fill-current text-gray-900"
+                              filter={isDark ? 'url(#textShadow)' : 'url(#textSoft)'}
+                              style={
+                                isDark
+                                  ? ({ paintOrder: 'stroke', stroke: 'rgba(0,0,0,0.55)', strokeWidth: 5, strokeLinejoin: 'round' } as React.CSSProperties)
+                                  : ({ letterSpacing: '0.01em', textRendering: 'geometricPrecision' } as React.CSSProperties)
+                              }
+                            >
                               {node.speaker2Name}
                             </text>
-                            <text textAnchor="middle" dy={24} className="text-xl fill-current text-gray-600 font-bold">
+                            <text
+                              textAnchor="middle"
+                              dy={24}
+                              className="text-xl fill-current text-gray-800 font-bold"
+                              filter={isDark ? 'url(#textShadow)' : 'url(#textSoft)'}
+                              style={
+                                isDark
+                                  ? ({ paintOrder: 'stroke', stroke: 'rgba(0,0,0,0.45)', strokeWidth: 4, strokeLinejoin: 'round' } as React.CSSProperties)
+                                  : ({ letterSpacing: '0.06em', textRendering: 'geometricPrecision' } as React.CSSProperties)
+                              }
+                            >
                               {node.result.intimacyScore}
                             </text>
 
@@ -381,7 +553,12 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onSelect, o
                                 }}
                                 className="opacity-0 group-hover:opacity-100 smooth-transition"
                               >
-                                <circle r={16} fill="rgba(255,255,255,0.92)" stroke="rgba(239, 68, 68, 0.70)" strokeWidth={2} />
+                                <circle
+                                  r={16}
+                                  fill={isDark ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.98)'}
+                                  stroke="rgba(239, 68, 68, 0.70)"
+                                  strokeWidth={2}
+                                />
                                 <text textAnchor="middle" dy=".35em" className="text-lg font-black fill-current" style={{ fill: 'rgba(239, 68, 68, 0.92)' }}>
                                   ×
                                 </text>

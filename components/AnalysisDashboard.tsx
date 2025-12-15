@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AnalysisResult, RelationshipMode } from '../types';
 import RelationshipGauge from './RelationshipGauge';
 import { ChatBubbleIcon, TagIcon, BarChartIcon, ExclamationTriangleIcon } from './icons';
 import { RELATIONSHIP_THEMES } from '../constants';
 import { useLanguage } from '../contexts/LanguageContext';
+import { translateAnalysisResult } from '../services/geminiService';
 
 interface AnalysisDashboardProps {
   result: AnalysisResult;
@@ -12,6 +13,130 @@ interface AnalysisDashboardProps {
 }
 
 const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
+
+const stableStringify = (value: unknown): string => {
+  const seen = new WeakSet<object>();
+
+  const stringify = (v: any): any => {
+    if (v === null || typeof v !== 'object') return v;
+    if (v instanceof Date) return v.toISOString();
+    if (Array.isArray(v)) return v.map(stringify);
+    if (typeof v === 'object') {
+      if (seen.has(v)) return undefined;
+      seen.add(v);
+      const keys = Object.keys(v).sort();
+      const out: Record<string, any> = {};
+      for (const k of keys) {
+        out[k] = stringify(v[k]);
+      }
+      return out;
+    }
+    return v;
+  };
+
+  return JSON.stringify(stringify(value));
+};
+
+const hashString = (input: string): string => {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16);
+};
+
+const getTranslationCacheKey = (result: AnalysisResult, mode: RelationshipMode) => {
+  const payload = {
+    version: 1,
+    mode,
+    intimacyScore: result.intimacyScore,
+    balanceRatio: result.balanceRatio,
+    sentiment: result.sentiment,
+    summary: result.summary,
+    recommendation: result.recommendation,
+    suggestedReplies: result.suggestedReplies,
+    attentionPoints: result.attentionPoints,
+    suggestedTopics: result.suggestedTopics,
+    safetyWarnings: result.safetyWarnings,
+  };
+
+  const digest = hashString(stableStringify(payload));
+  return `itda_translation_v1_en_${digest}`;
+};
+
+type SafetySignal = {
+  key: string;
+  ko: string;
+  en: string;
+  patterns: RegExp[];
+};
+
+const SAFETY_SIGNALS: SafetySignal[] = [
+  {
+    key: 'violence',
+    ko: '폭력/폭행',
+    en: 'Violence/Assault',
+    patterns: [/폭력|폭행|때리|맞았|맞아|주먹|발로|손찌검/i, /assault|hit\s+me|beat\s+me|punch|slap/i],
+  },
+  {
+    key: 'threat',
+    ko: '협박/위협',
+    en: 'Threats/Intimidation',
+    patterns: [/협박|위협|죽여|죽인다|가만\s*안\s*둬|해코지/i, /threat|kill\s+you|i\s*will\s*kill|hurt\s+you/i],
+  },
+  {
+    key: 'coercion',
+    ko: '강요/통제',
+    en: 'Coercion/Control',
+    patterns: [/강요|통제|감시|못\s*하게|하지\s*마|금지|폰\s*검사|연락\s*끊어/i, /control|monitor|forbid|you\s+can\'?t|stop\s+talking\s+to/i],
+  },
+  {
+    key: 'dating_abuse',
+    ko: '데이트폭력/가스라이팅',
+    en: 'Dating Abuse/Gaslighting',
+    patterns: [/데이트\s*폭력|가스라이팅|스토킹|집착|협박\s*성\s*관계/i, /dating\s+violence|gaslight|stalking|stalker|obsess/i],
+  },
+  {
+    key: 'work_harassment',
+    ko: '직장 괴롭힘',
+    en: 'Workplace Harassment',
+    patterns: [/직장\s*괴롭힘|상사|회식\s*강요|폭언|갑질|괴롭혀|따돌림/i, /workplace\s+harassment|boss\s+abuse|abusive\s+manager/i],
+  },
+  {
+    key: 'bullying',
+    ko: '왕따/따돌림',
+    en: 'Bullying/Exclusion',
+    patterns: [/왕따|따돌림|괴롭힘|단톡방\s*빼|무시\s*해/i, /bully|bullying|exclude|ignored\s+me|left\s+me\s+out/i],
+  },
+];
+
+const detectSafetyWarnings = (
+  input: {
+    chatHistory?: string[];
+    summary?: string;
+    recommendation?: string;
+    attentionPoints?: string[];
+  },
+  language: 'ko' | 'en'
+): string[] => {
+  const pieces: string[] = [];
+  if (input.chatHistory && input.chatHistory.length) pieces.push(input.chatHistory.join(' '));
+  if (input.summary) pieces.push(input.summary);
+  if (input.recommendation) pieces.push(input.recommendation);
+  if (input.attentionPoints && input.attentionPoints.length) pieces.push(input.attentionPoints.join(' '));
+
+  const blob = pieces.join(' ').toLowerCase();
+  if (!blob.trim()) return [];
+
+  const matched = new Set<string>();
+  for (const signal of SAFETY_SIGNALS) {
+    if (signal.patterns.some((p) => p.test(blob))) {
+      matched.add(language === 'ko' ? signal.ko : signal.en);
+    }
+  }
+  return Array.from(matched);
+};
 
 const MetricRow: React.FC<{ label: string; value: number; barClassName: string }> = ({ label, value, barClassName }) => {
   const pct = clampPercent(value);
@@ -30,18 +155,12 @@ const MetricRow: React.FC<{ label: string; value: number; barClassName: string }
 };
 
 const buildWordCloud = (chatHistory?: string[]) => {
-  // 실제 대화 텍스트가 없으면 빈 배열 반환
   if (!chatHistory || chatHistory.length === 0) {
     return [] as { word: string; count: number }[];
   }
 
-  // 모든 대화를 하나의 문자열로 합치기
   const raw = chatHistory.join(' ');
-  
-  // 대화 형식에서 이름: 부분 제거 (예: "철수: 안녕" -> "안녕")
   const withoutNames = raw.replace(/^[^:]+:\s*/gm, '');
-  
-  // 정규화: 소문자 변환, 특수문자 제거
   const normalized = withoutNames
     .toLowerCase()
     .replace(/[^a-z0-9가-힣\s]/g, ' ')
@@ -50,243 +169,125 @@ const buildWordCloud = (chatHistory?: string[]) => {
 
   if (!normalized) return [] as { word: string; count: number }[];
 
-  // 불용어 목록 (조사, 접속사, 의미 없는 단어)
   const stop = new Set([
-    // 영어 불용어
     'the', 'a', 'an', 'and', 'or', 'but', 'to', 'of', 'in', 'on', 'for', 'with', 'is', 'are', 'was', 'were', 'be',
     'this', 'that', 'it', 'as', 'at', 'by', 'from', 'you', 'your', 'we', 'our', 'they', 'their', 'i', 'me', 'my',
-    // 한국어 불용어
     '그리고', '하지만', '그래서', '또한', '그냥', '정말', '너무', '조금', '좀', '저', '나', '너', '우리', '그', '이', '저는',
     '그게', '이게', '저게', '그건', '이건', '저건', '그거', '이거', '저거',
     '있어', '없어', '있고', '없고', '있는', '없는', '있어서', '없어서',
-    '하는', '하는데', '해서', '하면', '하니', '하지만', '하니까',
-    '되는', '되는데', '돼서', '되면', '되니', '되지만',
+    '하는', '하는데', '해서', '하면', '하니', '하니까',
+    '되는', '되는데', '돼서', '되면', '되니',
     '같은', '같아', '같은데', '같아서', '같으면',
     '좋은', '좋아', '좋은데', '좋아서', '좋으면',
     '안', '못', '안해', '못해', '안돼', '못돼',
     '오전', '오후', '아침', '점심', '저녁', '밤',
-    '한시간', '한시', '두시', '세시', '네시', '다섯시',
-    '사진', '이미지', '파일', '기능', '상담', '테스트',
-    '연수', '학교', '다들', '아니', '네', '응', '어', '음',
   ]);
 
-  // 시간 표현 패턴 (예: "오전 9시", "3시", "한시간" 등)
   const timePattern = /^\d+시$|^오전|^오후|^한시간|^두시간|^세시간|^네시간|^다섯시간|^여섯시간|^일곱시간|^여덟시간|^아홉시간|^열시간/i;
-  
-  // 인명 패턴 (한글 이름, 영문 이름)
   const namePattern = /^[가-힣]{2,4}$|^[A-Z][a-z]+$/;
 
   const counts = new Map<string, number>();
   const tokens = normalized.split(' ');
-  
+
   for (const token of tokens) {
     const w = token.trim();
     if (!w) continue;
-    
-    // 2글자 미만 제거
     if (w.length < 2) continue;
-    
-    // 불용어 제거
     if (stop.has(w)) continue;
-    
-    // 시간 표현 제거
     if (timePattern.test(w)) continue;
-    
-    // 인명 제거 (2-4글자 한글 또는 영문 이름)
     if (namePattern.test(w) && w.length <= 4) continue;
-    
-    // 숫자만 있는 경우 제거
     if (/^\d+$/.test(w)) continue;
-    
     counts.set(w, (counts.get(w) || 0) + 1);
   }
 
   return Array.from(counts.entries())
     .map(([word, count]) => ({ word, count }))
     .sort((a, b) => b.count - a.count)
-    .slice(0, 10); // 최대 10개까지만
+    .slice(0, 10);
 };
 
-const getRomanceStageIndex = (result: AnalysisResult) => {
-  const intimacy = clampPercent(result.intimacyScore);
-  const positivity = clampPercent(result.sentiment?.positive ?? 0);
+const WordCloud: React.FC<{ result: AnalysisResult; mode: RelationshipMode; chatHistory?: string[] }> = ({ mode, chatHistory }) => {
+  const words = buildWordCloud(chatHistory);
+
+  if (words.length === 0) {
+    return <div className="text-sm text-gray-600">-</div>;
+  }
+
+  const max = Math.max(...words.map((w) => w.count));
+  const min = Math.min(...words.map((w) => w.count));
+  const scale = (count: number) => {
+    if (max === min) return 16;
+    const t = (count - min) / (max - min);
+    return 12 + t * 18;
+  };
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {words.map((w) => (
+        <span
+          key={w.word}
+          className="itda-pill"
+          style={{
+            fontSize: `${scale(w.count)}px`,
+            lineHeight: 1.1,
+            fontWeight: 800,
+            padding: '6px 12px',
+            borderRadius: '20px',
+          }}
+          title={`${w.word} (${w.count})`}
+        >
+          {w.word}
+        </span>
+      ))}
+    </div>
+  );
+};
+
+const getRomanceStageIndex = (r: AnalysisResult) => {
+  const intimacy = clampPercent(r.intimacyScore);
+  const positivity = clampPercent(r.sentiment?.positive ?? 0);
   const weighted = intimacy * 0.75 + positivity * 0.25;
 
-  if (weighted < 30) return 0; // 친구
-  if (weighted < 55) return 1; // 썸 초입
-  if (weighted < 75) return 2; // 썸
-  return 3; // 연인
+  if (weighted < 30) return 0;
+  if (weighted < 55) return 1;
+  if (weighted < 75) return 2;
+  return 3;
 };
 
-const getFriendStageIndex = (result: AnalysisResult) => {
-  const intimacy = clampPercent(result.intimacyScore);
-  const positivity = clampPercent(result.sentiment?.positive ?? 0);
-  const balance = 100 - Math.abs(result.balanceRatio.speaker1.percentage - result.balanceRatio.speaker2.percentage);
-  // Weighted calculation: intimacy (40%), positivity (35%), balance (25%)
+const getFriendStageIndex = (r: AnalysisResult) => {
+  const intimacy = clampPercent(r.intimacyScore);
+  const positivity = clampPercent(r.sentiment?.positive ?? 0);
+  const balance = 100 - Math.abs(r.balanceRatio.speaker1.percentage - r.balanceRatio.speaker2.percentage);
   const weighted = intimacy * 0.4 + positivity * 0.35 + balance * 0.25;
 
-  if (weighted < 25) return 0; // 비즈니스 관계
-  if (weighted < 50) return 1; // 어색한 친구
-  if (weighted < 75) return 2; // 학교 친구
-  return 3; // 영혼의 듀오
+  if (weighted < 25) return 0;
+  if (weighted < 50) return 1;
+  if (weighted < 75) return 2;
+  return 3;
 };
 
-const getWorkStageIndex = (result: AnalysisResult) => {
-  const intimacy = clampPercent(result.intimacyScore);
-  const positivity = clampPercent(result.sentiment?.positive ?? 0);
-  const balance = 100 - Math.abs(result.balanceRatio.speaker1.percentage - result.balanceRatio.speaker2.percentage);
-  // Weighted calculation for workplace: balance (40%), intimacy (35%), positivity (25%)
-  // Workplace relationships prioritize collaboration balance and trust
+const getWorkStageIndex = (r: AnalysisResult) => {
+  const intimacy = clampPercent(r.intimacyScore);
+  const positivity = clampPercent(r.sentiment?.positive ?? 0);
+  const balance = 100 - Math.abs(r.balanceRatio.speaker1.percentage - r.balanceRatio.speaker2.percentage);
   const weighted = balance * 0.4 + intimacy * 0.35 + positivity * 0.25;
 
-  if (weighted < 25) return 0; // 형식적
-  if (weighted < 50) return 1; // 협업
-  if (weighted < 75) return 2; // 신뢰
-  return 3; // 핵심 파트너
+  if (weighted < 25) return 0;
+  if (weighted < 50) return 1;
+  if (weighted < 75) return 2;
+  return 3;
 };
 
-const getOtherStageIndex = (result: AnalysisResult) => {
-  const intimacy = clampPercent(result.intimacyScore);
-  const positivity = clampPercent(result.sentiment?.positive ?? 0);
-  const balance = 100 - Math.abs(result.balanceRatio.speaker1.percentage - result.balanceRatio.speaker2.percentage);
-  // Weighted calculation for other relationships: intimacy (45%), positivity (30%), balance (25%)
-  // General relationships focus on emotional connection and positive interaction
+const getOtherStageIndex = (r: AnalysisResult) => {
+  const intimacy = clampPercent(r.intimacyScore);
+  const positivity = clampPercent(r.sentiment?.positive ?? 0);
+  const balance = 100 - Math.abs(r.balanceRatio.speaker1.percentage - r.balanceRatio.speaker2.percentage);
   const weighted = intimacy * 0.45 + positivity * 0.30 + balance * 0.25;
 
-  if (weighted < 25) return 0; // 거리감
-  if (weighted < 50) return 1; // 지인
-  if (weighted < 75) return 2; // 가까운 사이
-  return 3; // 유대
-};
-
-// Calculate workplace-specific metrics
-const getWorkMetrics = (result: AnalysisResult) => {
-  // Politeness: Based on positive sentiment and neutral tone (professional communication)
-  // Higher positive + neutral = more polite/professional
-  const politeness = clampPercent(
-    (result.sentiment.positive * 0.6) + (result.sentiment.neutral * 0.4)
-  );
-
-  // Clarity: Based on balance (clear role division) and response patterns
-  // More balanced communication suggests clearer expectations
-  const balance = 100 - Math.abs(result.balanceRatio.speaker1.percentage - result.balanceRatio.speaker2.percentage);
-  const clarity = clampPercent(balance * 0.7 + (result.sentiment.neutral * 0.3));
-
-  // Emotional Involvement: Based on sentiment intensity and intimacy
-  // Lower intimacy + moderate sentiment = professional distance
-  // Higher intimacy + strong sentiment = more emotional involvement
-  const sentimentIntensity = Math.abs(result.sentiment.positive - result.sentiment.negative);
-  const emotionalInvolvement = clampPercent(
-    (result.intimacyScore * 0.5) + (sentimentIntensity * 50 * 0.5)
-  );
-
-  return {
-    politeness,
-    clarity,
-    emotionalInvolvement,
-  };
-};
-
-// Generate relationship-specific summary text based on metrics and relationship type
-const getRelationshipSummary = (
-  result: AnalysisResult,
-  relationshipType: 'friend' | 'lover' | 'other',
-  language: 'ko' | 'en'
-): string => {
-  const { intimacyScore, sentiment, balanceRatio } = result;
-  const participation = balanceRatio.speaker1.percentage;
-  const positivity = sentiment.positive;
-  const intimacy = intimacyScore;
-
-  if (relationshipType === 'friend') {
-    // Friend relationship summaries
-    if (language === 'ko') {
-      if (participation > 70 && intimacy < 40) {
-        return '자주 소통하지만 감정적인 교류는 아직 친구 수준에 머물러 있어요.';
-      } else if (positivity > 60 && intimacy >= 40 && intimacy < 70) {
-        return '편안하고 긍정적인 친구 관계가 안정적으로 유지되고 있어요.';
-      } else if (intimacy >= 70) {
-        return '단순한 친구를 넘어 깊은 신뢰가 형성된 관계로 보여요.';
-      } else if (positivity < 40) {
-        return '친구 관계에서 긍정적인 감정 교류가 다소 부족해 보입니다.';
-      } else if (participation < 40) {
-        return '소통 빈도가 낮아 관계가 소원해질 수 있어요.';
-      } else {
-        return '서로를 배려하며 비교적 안정적인 친구 관계를 유지하고 있어요.';
-      }
-    } else {
-      // English
-      if (participation > 70 && intimacy < 40) {
-        return 'You communicate frequently, but emotional exchange remains at a friend level.';
-      } else if (positivity > 60 && intimacy >= 40 && intimacy < 70) {
-        return 'A comfortable and positive friendship is being maintained steadily.';
-      } else if (intimacy >= 70) {
-        return 'This relationship goes beyond simple friendship, showing deep trust.';
-      } else if (positivity < 40) {
-        return 'Positive emotional exchange seems somewhat lacking in this friendship.';
-      } else if (participation < 40) {
-        return 'Low communication frequency may lead to a distant relationship.';
-      } else {
-        return 'You maintain a relatively stable friendship while being considerate of each other.';
-      }
-    }
-  } else if (relationshipType === 'lover') {
-    // Romantic relationship summaries
-    if (language === 'ko') {
-      if (intimacy < 40) {
-        return '연인 관계이지만 감정 표현이나 교감이 충분히 드러나지 않고 있어요.';
-      } else if (positivity < 40) {
-        return '연인 간의 대화에서 긍정적인 감정 교류가 다소 부족해 보입니다.';
-      } else if (intimacy >= 70 && positivity >= 60) {
-        return '서로에 대한 애정과 배려가 대화 전반에 자연스럽게 드러나는 관계예요.';
-      } else if (intimacy >= 50 && positivity >= 50) {
-        return '연인으로서 서로에 대한 관심과 긍정적인 감정이 잘 형성되어 있어요.';
-      } else if (participation < 40) {
-        return '소통 빈도가 낮아 연인 관계 발전에 제약이 있을 수 있어요.';
-      } else {
-        return '연인 관계에서 서로를 배려하며 대화를 이어가고 있어요.';
-      }
-    } else {
-      // English
-      if (intimacy < 40) {
-        return 'Although in a romantic relationship, emotional expression and connection are not fully revealed.';
-      } else if (positivity < 40) {
-        return 'Positive emotional exchange seems somewhat lacking in conversations between lovers.';
-      } else if (intimacy >= 70 && positivity >= 60) {
-        return 'Affection and care for each other naturally appear throughout the conversation.';
-      } else if (intimacy >= 50 && positivity >= 50) {
-        return 'As lovers, interest in each other and positive emotions are well-formed.';
-      } else if (participation < 40) {
-        return 'Low communication frequency may limit the development of the romantic relationship.';
-      } else {
-        return 'You continue conversations while being considerate of each other in your romantic relationship.';
-      }
-    }
-  } else {
-    // Other relationship type - use generic summary
-    if (language === 'ko') {
-      return '서로를 배려하며 비교적 안정적인 대화 흐름을 유지하고 있어요.';
-    } else {
-      return 'You are maintaining a relatively stable conversation flow while being considerate of each other.';
-    }
-  }
-};
-
-// Generate workplace-appropriate summary text
-const getWorkMetricsSummary = (result: AnalysisResult, t: (key: string) => string): string => {
-  const metrics = getWorkMetrics(result);
-  
-  // Simple heuristic-based summary
-  // Can be enhanced later with more sophisticated logic
-  if (metrics.politeness > 70 && metrics.clarity > 60) {
-    return t('workMetricsSummary');
-  } else if (metrics.politeness < 50) {
-    return t('workMetricsSummaryLowPoliteness');
-  } else if (metrics.clarity < 50) {
-    return t('workMetricsSummaryLowClarity');
-  } else {
-    return t('workMetricsSummaryNeutral');
-  }
+  if (weighted < 25) return 0;
+  if (weighted < 50) return 1;
+  if (weighted < 75) return 2;
+  return 3;
 };
 
 interface RelationshipProgressProps {
@@ -311,42 +312,37 @@ const RelationshipProgress: React.FC<RelationshipProgressProps> = ({
   const { t } = useLanguage();
   const theme = RELATIONSHIP_THEMES[mode];
   const stageIndex = getStageIndex(result);
-  
-  // Calculate position: 0 = 0%, 1 = 33.33%, 2 = 66.66%, 3 = 100%
   const markerPct = (stageIndex / (stages.length - 1)) * 100;
   const fillPct = markerPct;
 
   return (
     <div className="itda-card p-6">
       <h3 className="text-xl font-bold text-gray-800 mb-4">{t(titleKey as any)}</h3>
-      
-      {/* Top Layer: Stage labels */}
+
       <div className="flex justify-between mb-3 text-sm font-semibold text-gray-700">
         {stages.map((stage, index) => (
           <span key={index}>{t(stage.key as any)}</span>
         ))}
       </div>
 
-      {/* Middle Layer: Progress bar */}
       <div className="relative mb-2">
         <div className="relative h-4 rounded-full overflow-hidden" style={{ background: 'rgba(255, 255, 255, 0.3)' }}>
-          <div 
-            className="h-full rounded-full" 
-            style={{ 
-              width: `${fillPct}%`, 
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${fillPct}%`,
               background: barGradient,
-              transition: 'width 0.5s ease'
-            }} 
+              transition: 'width 0.5s ease',
+            }}
           />
         </div>
       </div>
 
-      {/* Bottom Layer: Arrow indicator pointing upward */}
       <div className="relative mb-6" style={{ height: '12px' }}>
         <div
           className="absolute"
-          style={{ 
-            left: `${markerPct}%`, 
+          style={{
+            left: `${markerPct}%`,
             top: '0',
             transform: 'translateX(-50%)',
           }}
@@ -362,7 +358,6 @@ const RelationshipProgress: React.FC<RelationshipProgressProps> = ({
         </div>
       </div>
 
-      {/* Description text */}
       <p className="text-base text-gray-700">
         {(() => {
           const desc = t(stages[stageIndex].desc as any);
@@ -386,14 +381,12 @@ const RelationshipProgress: React.FC<RelationshipProgressProps> = ({
 
 const RomanceStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMode }> = ({ result, mode }) => {
   if (mode !== RelationshipMode.ROMANCE) return null;
-
   const stages = [
     { key: 'romanceStageFriend', desc: 'romanceStageDescriptionFriend' },
     { key: 'romanceStageFlirtingStart', desc: 'romanceStageDescriptionFlirtingStart' },
     { key: 'romanceStageFlirting', desc: 'romanceStageDescriptionFlirting' },
     { key: 'romanceStageDating', desc: 'romanceStageDescriptionDating' },
   ] as const;
-
   return (
     <RelationshipProgress
       result={result}
@@ -409,14 +402,12 @@ const RomanceStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMod
 
 const FriendStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMode }> = ({ result, mode }) => {
   if (mode !== RelationshipMode.FRIEND) return null;
-
   const stages = [
     { key: 'friendStageBusiness', desc: 'friendStageDescriptionBusiness' },
     { key: 'friendStageAwkward', desc: 'friendStageDescriptionAwkward' },
     { key: 'friendStageSchool', desc: 'friendStageDescriptionSchool' },
     { key: 'friendStageSoulmate', desc: 'friendStageDescriptionSoulmate' },
   ] as const;
-
   return (
     <RelationshipProgress
       result={result}
@@ -432,14 +423,12 @@ const FriendStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMode
 
 const WorkStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMode }> = ({ result, mode }) => {
   if (mode !== RelationshipMode.WORK) return null;
-
   const stages = [
     { key: 'workStageFormal', desc: 'workStageDescriptionFormal' },
     { key: 'workStageCollaboration', desc: 'workStageDescriptionCollaboration' },
     { key: 'workStageTrust', desc: 'workStageDescriptionTrust' },
     { key: 'workStageCorePartner', desc: 'workStageDescriptionCorePartner' },
   ] as const;
-
   return (
     <RelationshipProgress
       result={result}
@@ -455,14 +444,12 @@ const WorkStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMode }
 
 const OtherStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMode }> = ({ result, mode }) => {
   if (mode !== RelationshipMode.OTHER) return null;
-
   const stages = [
     { key: 'otherStageDistant', desc: 'otherStageDescriptionDistant' },
     { key: 'otherStageAcquaintance', desc: 'otherStageDescriptionAcquaintance' },
     { key: 'otherStageClose', desc: 'otherStageDescriptionClose' },
     { key: 'otherStageBond', desc: 'otherStageDescriptionBond' },
   ] as const;
-
   return (
     <RelationshipProgress
       result={result}
@@ -476,45 +463,74 @@ const OtherStageCard: React.FC<{ result: AnalysisResult; mode: RelationshipMode 
   );
 };
 
-const WordCloud: React.FC<{ result: AnalysisResult; mode: RelationshipMode; chatHistory?: string[] }> = ({ result, mode, chatHistory }) => {
-  const theme = RELATIONSHIP_THEMES[mode];
-  const words = buildWordCloud(chatHistory);
+const getWorkMetrics = (r: AnalysisResult) => {
+  const politeness = clampPercent(r.sentiment.positive * 0.6 + r.sentiment.neutral * 0.4);
+  const balance = 100 - Math.abs(r.balanceRatio.speaker1.percentage - r.balanceRatio.speaker2.percentage);
+  const clarity = clampPercent(balance * 0.7 + r.sentiment.neutral * 0.3);
+  const sentimentIntensity = Math.abs(r.sentiment.positive - r.sentiment.negative);
+  const emotionalInvolvement = clampPercent(r.intimacyScore * 0.5 + sentimentIntensity * 50 * 0.5);
 
-  if (words.length === 0) {
-    return <div className="text-sm text-gray-600">-</div>;
+  return {
+    politeness,
+    clarity,
+    emotionalInvolvement,
+  };
+};
+
+const getWorkMetricsSummary = (r: AnalysisResult, t: (key: any) => string): string => {
+  const metrics = getWorkMetrics(r);
+  if (metrics.politeness > 70 && metrics.clarity > 60) {
+    return t('workMetricsSummary');
+  } else if (metrics.politeness < 50) {
+    return t('workMetricsSummaryLowPoliteness');
+  } else if (metrics.clarity < 50) {
+    return t('workMetricsSummaryLowClarity');
+  } else {
+    return t('workMetricsSummaryNeutral');
+  }
+};
+
+const getRelationshipSummary = (r: AnalysisResult, relationshipType: 'friend' | 'lover' | 'other', language: 'ko' | 'en'): string => {
+  const participation = r.balanceRatio.speaker1.percentage;
+  const positivity = r.sentiment.positive;
+  const intimacy = r.intimacyScore;
+
+  if (relationshipType === 'friend') {
+    if (language === 'ko') {
+      if (participation > 70 && intimacy < 40) return '자주 소통하지만 감정적인 교류는 아직 친구 수준에 머물러 있어요.';
+      if (positivity > 60 && intimacy >= 40 && intimacy < 70) return '편안하고 긍정적인 친구 관계가 안정적으로 유지되고 있어요.';
+      if (intimacy >= 70) return '단순한 친구를 넘어 깊은 신뢰가 형성된 관계로 보여요.';
+      if (positivity < 40) return '친구 관계에서 긍정적인 감정 교류가 다소 부족해 보입니다.';
+      if (participation < 40) return '소통 빈도가 낮아 관계가 소원해질 수 있어요.';
+      return '서로를 배려하며 비교적 안정적인 친구 관계를 유지하고 있어요.';
+    }
+    if (participation > 70 && intimacy < 40) return 'You communicate frequently, but emotional exchange remains at a friend level.';
+    if (positivity > 60 && intimacy >= 40 && intimacy < 70) return 'A comfortable and positive friendship is being maintained steadily.';
+    if (intimacy >= 70) return 'This relationship goes beyond simple friendship, showing deep trust.';
+    if (positivity < 40) return 'Positive emotional exchange seems somewhat lacking in this friendship.';
+    if (participation < 40) return 'Low communication frequency may lead to a distant relationship.';
+    return 'You maintain a relatively stable friendship while being considerate of each other.';
   }
 
-  const max = Math.max(...words.map((w) => w.count));
-  const min = Math.min(...words.map((w) => w.count));
-  const scale = (count: number) => {
-    if (max === min) return 16;
-    const t = (count - min) / (max - min);
-    return 12 + t * 18;
-  };
+  if (relationshipType === 'lover') {
+    if (language === 'ko') {
+      if (intimacy < 40) return '연인 관계이지만 감정 표현이나 교감이 충분히 드러나지 않고 있어요.';
+      if (positivity < 40) return '연인 간의 대화에서 긍정적인 감정 교류가 다소 부족해 보입니다.';
+      if (intimacy >= 70 && positivity >= 60) return '서로에 대한 애정과 배려가 대화 전반에 자연스럽게 드러나는 관계예요.';
+      if (intimacy >= 50 && positivity >= 50) return '연인으로서 서로에 대한 관심과 긍정적인 감정이 잘 형성되어 있어요.';
+      if (participation < 40) return '소통 빈도가 낮아 연인 관계 발전에 제약이 있을 수 있어요.';
+      return '연인 관계에서 서로를 배려하며 대화를 이어가고 있어요.';
+    }
+    if (intimacy < 40) return 'Although in a romantic relationship, emotional expression and connection are not fully revealed.';
+    if (positivity < 40) return 'Positive emotional exchange seems somewhat lacking in conversations between lovers.';
+    if (intimacy >= 70 && positivity >= 60) return 'Affection and care for each other naturally appear throughout the conversation.';
+    if (intimacy >= 50 && positivity >= 50) return 'As lovers, interest in each other and positive emotions are well-formed.';
+    if (participation < 40) return 'Low communication frequency may limit the development of the romantic relationship.';
+    return 'You continue conversations while being considerate of each other in your romantic relationship.';
+  }
 
-  return (
-      <div className="flex flex-wrap gap-2">
-        {words.map((w) => (
-          <span
-            key={w.word}
-          className="itda-pill text-gray-800"
-            style={{
-              fontSize: `${scale(w.count)}px`,
-              lineHeight: 1.1,
-              fontWeight: 800,
-            background: 'rgba(147, 51, 234, 0.15)',
-            border: '1px solid rgba(147, 51, 234, 0.25)',
-            color: '#6b21a8',
-            padding: '6px 12px',
-            borderRadius: '20px',
-            }}
-            title={`${w.word} (${w.count})`}
-          >
-            {w.word}
-          </span>
-        ))}
-    </div>
-  );
+  if (language === 'ko') return '서로를 배려하며 비교적 안정적인 대화 흐름을 유지하고 있어요.';
+  return 'You are maintaining a relatively stable conversation flow while being considerate of each other.';
 };
 
 const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, chatHistory }) => {
@@ -525,17 +541,133 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
   const isWork = mode === RelationshipMode.WORK;
   const isOther = mode === RelationshipMode.OTHER;
 
+  const [translatedResult, setTranslatedResult] = useState<AnalysisResult | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+
+  const needsTranslation = useMemo(() => {
+    if (language !== 'en') return false;
+
+    const fields: string[] = [
+      result.summary,
+      result.recommendation,
+      ...(result.suggestedReplies || []),
+      ...(result.attentionPoints || []),
+      ...(result.suggestedTopics || []),
+    ].filter(Boolean);
+
+    return fields.some((s) => /[가-힣]/.test(s));
+  }, [result, language]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setTranslatedResult(null);
+
+    const run = async () => {
+      if (!needsTranslation) return;
+
+      const cacheKey = getTranslationCacheKey(result, mode);
+      try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached) as AnalysisResult;
+          if (!cancelled) {
+            setTranslatedResult(parsed);
+          }
+          return;
+        }
+      } catch {
+        // ignore cache errors
+      }
+
+      setIsTranslating(true);
+
+      const spinnerTimeout = window.setTimeout(() => {
+        if (cancelled) return;
+        setIsTranslating(false);
+      }, 2500);
+
+      try {
+        const translated = await translateAnalysisResult(result, 'en');
+        if (cancelled) return;
+        setTranslatedResult(translated);
+
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(translated));
+        } catch {
+          // ignore quota errors
+        }
+      } catch {
+        if (cancelled) return;
+        setTranslatedResult(null);
+      } finally {
+        window.clearTimeout(spinnerTimeout);
+        if (cancelled) return;
+        setIsTranslating(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [result, needsTranslation]);
+
+  const displayResult = translatedResult ?? result;
+
+  const safetyWarnings = useMemo(() => {
+    const computed = detectSafetyWarnings(
+      {
+        chatHistory,
+        summary: displayResult.summary,
+        recommendation: displayResult.recommendation,
+        attentionPoints: displayResult.attentionPoints,
+      },
+      language
+    );
+    const rawFromResult = (displayResult as any).safetyWarnings;
+    const fromResult = Array.isArray(rawFromResult)
+      ? rawFromResult.filter(Boolean)
+      : typeof rawFromResult === 'string' && rawFromResult.trim()
+        ? [rawFromResult.trim()]
+        : [];
+    return Array.from(new Set([...fromResult, ...computed]));
+  }, [chatHistory, displayResult, language]);
+
   return (
     <div className="w-full max-w-5xl mx-auto p-4 md:p-6 space-y-8 fade-in">
       {/* Top Section: Gauge and Summary */}
       <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12">
-        <RelationshipGauge score={result.intimacyScore} mode={mode} />
+        <RelationshipGauge score={displayResult.intimacyScore} mode={mode} />
         <div className="flex-1 w-full text-center md:text-left">
           <h2 className="text-3xl font-bold text-gray-800">{t('analysisResults')}</h2>
-          <p className={`mt-2 text-lg font-medium ${theme.text}`}>{result.summary}</p>
+          {isTranslating && (
+            <div className="mt-2 text-xs text-gray-500">{t('analyzing')}</div>
+          )}
+          <p className={`mt-2 text-lg font-medium ${theme.text}`}>{displayResult.summary}</p>
           <div className="itda-alert itda-alert-warn mt-4" style={{ borderLeftWidth: 4 }}>
             <p className="font-bold">{t('recommendationTitle')}</p>
-            <p>{result.recommendation}</p>
+            <p>{displayResult.recommendation}</p>
+
+            {safetyWarnings.length > 0 && (
+              <div className="itda-alert itda-alert-error mt-3" style={{ borderLeftWidth: 4 }}>
+                <p className="font-bold">{t('safetyWarningTitle')}</p>
+                <p className="mt-1">{t('safetyWarningBody')}</p>
+                <div className="mt-2">
+                  <div className="text-sm font-semibold">{t('safetyWarningDetected')}</div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {safetyWarnings.map((w) => (
+                      <span
+                        key={w}
+                        className="itda-pill"
+                        style={{ padding: '4px 10px', borderRadius: '999px', fontWeight: 800 }}
+                      >
+                        {w}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -619,7 +751,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
               </div>
             </div>
           ) : isWork ? (
-            /* Work Mode: Workplace-specific Metrics Layout */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left: Workplace Relationship Metrics Summary */}
               <div className="itda-card p-5">
@@ -657,7 +788,6 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
               </div>
             </div>
           ) : isOther ? (
-            /* Other Mode: Same layout as Romance and Friend - Metrics and Keywords */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left: Relationship Metrics Summary */}
               <div className="itda-card p-5">
@@ -688,23 +818,22 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
               </div>
             </div>
           ) : (
-            /* Fallback: Original Layout for any other modes */
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
-        <div className="itda-card p-5 md:col-span-2">
-          <div className="space-y-3">
-            <MetricRow label={t('participation')} value={result.balanceRatio.speaker1.percentage} barClassName={theme.medium} />
-            <MetricRow label={t('positivity')} value={result.sentiment.positive} barClassName={theme.medium} />
-            <MetricRow label={t('intimacy')} value={result.intimacyScore} barClassName={theme.medium} />
-          </div>
-        </div>
-        <div className="itda-card p-5 md:col-span-3">
-          <div className="flex items-center text-gray-700 mb-3">
-            <TagIcon className="w-5 h-5 mr-2 text-indigo-500" />
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
+              <div className="itda-card p-5 md:col-span-2">
+                <div className="space-y-3">
+                  <MetricRow label={t('participation')} value={result.balanceRatio.speaker1.percentage} barClassName={theme.medium} />
+                  <MetricRow label={t('positivity')} value={result.sentiment.positive} barClassName={theme.medium} />
+                  <MetricRow label={t('intimacy')} value={result.intimacyScore} barClassName={theme.medium} />
+                </div>
+              </div>
+              <div className="itda-card p-5 md:col-span-3">
+                <div className="flex items-center text-gray-700 mb-3">
+                  <TagIcon className="w-5 h-5 mr-2 text-indigo-500" />
                   <h3 className="font-bold">{t('wordCloud')}</h3>
-          </div>
-          <WordCloud result={result} mode={mode} />
-        </div>
-      </div>
+                </div>
+                <WordCloud result={result} mode={mode} chatHistory={chatHistory} />
+              </div>
+            </div>
           )}
         </>
       )}
@@ -712,7 +841,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
       {/* Next Step Suggestions Section */}
       <div className="space-y-6">
         <h3 className="text-xl font-bold text-gray-800">{t('nextStepTitle')}</h3>
-        
+
         {/* Top Section: 2-column layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left: Suggested Replies */}
@@ -722,8 +851,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
               <h4 className="font-bold">{t('suggestedRepliesTitle')}</h4>
             </div>
             <div className="space-y-2">
-              {result.suggestedReplies && result.suggestedReplies.length > 0 ? (
-                result.suggestedReplies.map((reply, index) => (
+              {displayResult.suggestedReplies && displayResult.suggestedReplies.length > 0 ? (
+                displayResult.suggestedReplies.map((reply, index) => (
                   <div key={index} className="p-3 rounded-lg text-sm" style={{ background: 'rgba(139, 92, 246, 0.10)', color: '#5b21b6' }}>
                     {reply}
                   </div>
@@ -741,8 +870,8 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
               <h4 className="font-bold">{t('attentionPointsTitle')}</h4>
             </div>
             <div className="space-y-2">
-              {result.attentionPoints && result.attentionPoints.length > 0 ? (
-                result.attentionPoints.map((point, index) => (
+              {displayResult.attentionPoints && displayResult.attentionPoints.length > 0 ? (
+                displayResult.attentionPoints.map((point, index) => (
                   <div key={index} className="p-3 rounded-lg text-sm" style={{ background: 'rgba(251, 191, 36, 0.10)', color: '#92400e' }}>
                     {point}
                   </div>
@@ -760,12 +889,10 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
             <TagIcon className="w-6 h-6 mr-2 text-indigo-500" />
             <h4 className="font-bold text-lg">{t('suggestedTopicsTitle')}</h4>
           </div>
-          <p className="text-sm text-gray-600 mb-4">
-            {t('suggestedTopicsSubtitle')}
-          </p>
+          <p className="text-sm text-gray-600 mb-4">{t('suggestedTopicsSubtitle')}</p>
           <div className="flex flex-wrap gap-3">
-            {result.suggestedTopics && result.suggestedTopics.length > 0 ? (
-              result.suggestedTopics.map((topic, index) => (
+            {displayResult.suggestedTopics && displayResult.suggestedTopics.length > 0 ? (
+              displayResult.suggestedTopics.map((topic, index) => (
                 <button
                   key={index}
                   className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105"

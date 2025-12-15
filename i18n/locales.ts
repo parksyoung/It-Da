@@ -64,6 +64,9 @@ export const translations = {
     // Analysis Dashboard
     analysisResults: '대화 분석 결과',
     recommendationTitle: 'It-Da의 추천',
+    safetyWarningTitle: '안전 안내',
+    safetyWarningBody: '대화 내용에서 폭력/괴롭힘/협박/따돌림 등 위험 신호가 의심됩니다. 즉시 안전을 우선으로 하고, 필요하다면 주변 도움이나 전문기관/긴급 대응을 고려하세요.',
+    safetyWarningDetected: '감지된 신호',
     balance: '대화 균형',
     responseTime: '평균 응답 시간',
     sentiment: '감정 톤',
@@ -309,6 +312,9 @@ export const translations = {
     // Analysis Dashboard
     analysisResults: 'Conversation Analysis Results',
     recommendationTitle: "It-Da's Recommendation",
+    safetyWarningTitle: 'Safety Notice',
+    safetyWarningBody: 'This conversation may include warning signs related to violence, harassment, threats, or bullying. Please prioritize your safety and consider reaching out to trusted people, professional support, or local emergency services if needed.',
+    safetyWarningDetected: 'Detected signals',
     balance: 'Conversation Balance',
     responseTime: 'Average Response Time',
     sentiment: 'Emotional Tone',
