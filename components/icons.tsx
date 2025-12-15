@@ -116,3 +116,23 @@ export const ExclamationTriangleIcon = ({ className }: { className?: string }) =
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
   </svg>
 );
+
+export const MoonIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.358.277-2.652.778-3.828A9.75 9.75 0 1021.752 15.002z"
+    />
+  </svg>
+);
+
+export const SunIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 18a6 6 0 100-12 6 6 0 000 12zM12 2.25v1.5M12 20.25v1.5M4.219 4.219l1.061 1.061M18.72 18.72l1.061 1.061M2.25 12h1.5M20.25 12h1.5M4.219 19.781l1.061-1.061M18.72 5.28l1.061-1.061"
+    />
+  </svg>
+);

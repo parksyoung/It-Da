@@ -5,7 +5,7 @@ const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 const getAi = () => {
   if (!apiKey) {
-    throw new Error('Gemini API 키가 설정되지 않았습니다. .env.local에 VITE_GEMINI_API_KEY를 추가해주세요.');
+    throw new Error('Gemini API key is not set. Please add VITE_GEMINI_API_KEY to your .env.local file.');
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -109,9 +109,31 @@ const analysisSchema = {
       type: Type.ARRAY,
       description: 'An array of 3-4 conversation topics that naturally flow at the current relationship stage. Each topic should be a short, engaging phrase suitable for the relationship type (romance/friend/work). Topics should be based on the actual conversation content and relationship dynamics.',
       items: { type: Type.STRING }
-    }
+    },
+    safetyWarnings: {
+      type: Type.OBJECT,
+      description: 'Safety-related warnings if concerning signals are detected in the conversation. Use this to flag potential abuse, coercion, threats, harassment, stalking, financial control, or self-harm risk. If no safety concern is detected, set detected=false and level="none" with empty arrays.',
+      properties: {
+        detected: { type: Type.BOOLEAN, description: 'Whether any safety concern is detected.' },
+        level: {
+          type: Type.STRING,
+          description: 'Severity level of the detected concern: none | low | medium | high.',
+        },
+        messages: {
+          type: Type.ARRAY,
+          description: '2-5 short warning messages describing what was detected and why it may be risky. Must be grounded in the conversation content.',
+          items: { type: Type.STRING },
+        },
+        guidance: {
+          type: Type.ARRAY,
+          description: '2-5 short, practical safety guidance steps (e.g., set boundaries, seek help, talk to trusted person, contact local resources). Avoid diagnosing; be supportive.',
+          items: { type: Type.STRING },
+        },
+      },
+      required: ['detected', 'level', 'messages', 'guidance'],
+    },
   },
-  required: ['intimacyScore', 'balanceRatio', 'sentiment', 'avgResponseTime', 'summary', 'recommendation', 'sentimentFlow', 'responseHeatmap', 'suggestedReplies', 'attentionPoints', 'suggestedTopics'],
+  required: ['intimacyScore', 'balanceRatio', 'sentiment', 'avgResponseTime', 'summary', 'recommendation', 'sentimentFlow', 'responseHeatmap', 'suggestedReplies', 'attentionPoints', 'suggestedTopics', 'safetyWarnings'],
 };
 
 
@@ -148,6 +170,7 @@ export const analyzeConversation = async (historyString: string, mode: Relations
     9.  **Next Conversation Suggestions:** Based on the last few messages, provide an array of 2-3 potential replies to the last message.
     10. **Attention Points (주의할 포인트):** Based on the conversation analysis, provide an array of 2-3 specific points to be cautious about in this relationship. Each point should be a short, advisory sentence that helps maintain or improve the relationship. Focus on communication patterns, emotional dynamics, or potential misunderstandings observed in the conversation.
     11. **Suggested Topics (대화 주제 추천):** Based on the conversation history and current relationship stage, provide an array of 3-4 conversation topics that naturally flow at this relationship stage. Each topic should be a short, engaging phrase (not a full sentence) that fits the relationship type. For romance mode, suggest topics that help deepen the relationship. For friend mode, suggest casual, friendly topics. For work mode, suggest professional but warm topics.
+    12. **Safety Warnings (안전 경고):** Carefully check for safety red flags grounded in the conversation text, such as threats, insults and intimidation, coercion, controlling behavior, stalking, sexual coercion, financial control, harassment at work, doxxing, or self-harm risk. If detected, set safetyWarnings.detected=true, choose an appropriate safetyWarnings.level (low/medium/high), and provide concise safetyWarnings.messages and safetyWarnings.guidance. If not detected, set detected=false, level="none", and empty arrays.
 
     Conversation history to analyze:
     ---
@@ -182,6 +205,45 @@ export const analyzeConversation = async (historyString: string, mode: Relations
  */
 export const analyzeChat = async (chatText: string, mode: RelationshipMode, language: 'ko' | 'en'): Promise<AnalysisResult> => {
   return analyzeConversation(chatText, mode, language);
+};
+
+export const translateAnalysisResult = async (
+  source: AnalysisResult,
+  targetLanguage: 'ko' | 'en'
+): Promise<AnalysisResult> => {
+  const prompt = `
+You are a professional translator.
+
+Task:
+- Translate the following JSON analysis result to ${targetLanguage === 'ko' ? 'Korean' : 'English'}.
+
+Rules:
+- Output MUST be valid JSON matching the provided schema.
+- Preserve the exact JSON structure and keep all numbers unchanged.
+- Do NOT translate proper names (e.g., speaker names) or identifiers.
+- Translate all user-facing text fields: summary, recommendation, suggestedReplies, attentionPoints, suggestedTopics, safetyWarnings.messages, safetyWarnings.guidance.
+
+Input JSON:
+${JSON.stringify(source)}
+`;
+
+  try {
+    const ai = getAi();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: analysisSchema,
+      },
+    });
+
+    const jsonString = response.text.trim();
+    return JSON.parse(jsonString) as AnalysisResult;
+  } catch (error) {
+    console.error('Error translating analysis result:', error);
+    throw new Error(targetLanguage === 'ko' ? '분석 결과 번역에 실패했습니다.' : 'Failed to translate the analysis result.');
+  }
 };
 
 export const counselConversation = async (

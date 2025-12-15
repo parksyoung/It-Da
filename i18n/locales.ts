@@ -90,6 +90,13 @@ export const translations = {
     radarStability: '안정성',
     radarResponsiveness: '응답성',
     addMoreConversation: '추가 대화 분석하기',
+    safetyWarningTitle: '안전 경고',
+    safetyWarningNote: '대화에서 위험 신호로 보이는 표현이 감지되었어요. 긴급한 위험이 느껴지면 주변 도움을 요청하세요.',
+    safetyGuidanceTitle: '안전을 위한 제안',
+    safetyLevelNone: '정상',
+    safetyLevelLow: '주의',
+    safetyLevelMedium: '경고',
+    safetyLevelHigh: '위험',
     
     // Romance-specific
     romanceRelationshipPosition: '지금 관계는 이쯤이에요',
@@ -100,7 +107,6 @@ export const translations = {
     romanceStageDescriptionFriend: '친근하지만, 아직 확실한 감정 표현 단계는 아니에요. 가볍게 리액션하며 신뢰를 쌓는 게 좋아요.',
     romanceStageDescriptionFlirtingStart: '호감이 있는 단계예요. 자연스럽게 대화를 이어가며 서로를 알아가는 썸 초입이에요.',
     romanceStageDescriptionFlirting: '서로의 감정을 확인하고 있는 단계예요. 부담 없이 솔직한 대화를 나누는 게 중요해요.',
-    romanceStageDescriptionDating: '연인 관계로 발전했어요. 서로에 대한 이해와 배려가 잘 형성되어 있어요.',
     romanceAttentionPoints: '현재 관계에서 주의할 포인트',
     suggestedTopicsTitle: '대화 주제 추천',
     suggestedTopicsSubtitle: '지금 관계 단계에서 자연스럽게 이어가기 좋은 이야기예요',
@@ -344,6 +350,13 @@ export const translations = {
     radarStability: 'Stability',
     radarResponsiveness: 'Responsiveness',
     addMoreConversation: 'Analyze another conversation',
+    safetyWarningTitle: 'Safety Warning',
+    safetyWarningNote: 'We detected potentially concerning signals in the conversation. If you feel in immediate danger, seek help from trusted people or local emergency resources.',
+    safetyGuidanceTitle: 'Safety Suggestions',
+    safetyLevelNone: 'OK',
+    safetyLevelLow: 'Caution',
+    safetyLevelMedium: 'Warning',
+    safetyLevelHigh: 'High Risk',
     
     // Romance-specific
     romanceRelationshipPosition: 'Your relationship is about here',
@@ -354,7 +367,6 @@ export const translations = {
     romanceStageDescriptionFriend: 'Friendly, but not yet at a stage of clear emotional expression. It\'s good to react lightly and build trust.',
     romanceStageDescriptionFlirtingStart: 'The stage where interest in each other begins. It\'s good to naturally continue conversations and build affection.',
     romanceStageDescriptionFlirting: 'The stage of confirming each other\'s feelings. It\'s important to have honest conversations without pressure.',
-    romanceStageDescriptionDating: 'The relationship has developed into a romantic one. Mutual understanding and consideration are well-formed.',
     romanceAttentionPoints: 'Points to Note in Current Relationship',
     suggestedTopicsTitle: 'Suggested Topics',
     suggestedTopicsSubtitle: 'Topics that naturally flow at this relationship stage',
