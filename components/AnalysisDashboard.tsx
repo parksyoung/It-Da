@@ -187,6 +187,91 @@ const getWorkMetrics = (result: AnalysisResult) => {
   };
 };
 
+// Generate relationship-specific summary text based on metrics and relationship type
+const getRelationshipSummary = (
+  result: AnalysisResult,
+  relationshipType: 'friend' | 'lover' | 'other',
+  language: 'ko' | 'en'
+): string => {
+  const { intimacyScore, sentiment, balanceRatio } = result;
+  const participation = balanceRatio.speaker1.percentage;
+  const positivity = sentiment.positive;
+  const intimacy = intimacyScore;
+
+  if (relationshipType === 'friend') {
+    // Friend relationship summaries
+    if (language === 'ko') {
+      if (participation > 70 && intimacy < 40) {
+        return '자주 소통하지만 감정적인 교류는 아직 친구 수준에 머물러 있어요.';
+      } else if (positivity > 60 && intimacy >= 40 && intimacy < 70) {
+        return '편안하고 긍정적인 친구 관계가 안정적으로 유지되고 있어요.';
+      } else if (intimacy >= 70) {
+        return '단순한 친구를 넘어 깊은 신뢰가 형성된 관계로 보여요.';
+      } else if (positivity < 40) {
+        return '친구 관계에서 긍정적인 감정 교류가 다소 부족해 보입니다.';
+      } else if (participation < 40) {
+        return '소통 빈도가 낮아 관계가 소원해질 수 있어요.';
+      } else {
+        return '서로를 배려하며 비교적 안정적인 친구 관계를 유지하고 있어요.';
+      }
+    } else {
+      // English
+      if (participation > 70 && intimacy < 40) {
+        return 'You communicate frequently, but emotional exchange remains at a friend level.';
+      } else if (positivity > 60 && intimacy >= 40 && intimacy < 70) {
+        return 'A comfortable and positive friendship is being maintained steadily.';
+      } else if (intimacy >= 70) {
+        return 'This relationship goes beyond simple friendship, showing deep trust.';
+      } else if (positivity < 40) {
+        return 'Positive emotional exchange seems somewhat lacking in this friendship.';
+      } else if (participation < 40) {
+        return 'Low communication frequency may lead to a distant relationship.';
+      } else {
+        return 'You maintain a relatively stable friendship while being considerate of each other.';
+      }
+    }
+  } else if (relationshipType === 'lover') {
+    // Romantic relationship summaries
+    if (language === 'ko') {
+      if (intimacy < 40) {
+        return '연인 관계이지만 감정 표현이나 교감이 충분히 드러나지 않고 있어요.';
+      } else if (positivity < 40) {
+        return '연인 간의 대화에서 긍정적인 감정 교류가 다소 부족해 보입니다.';
+      } else if (intimacy >= 70 && positivity >= 60) {
+        return '서로에 대한 애정과 배려가 대화 전반에 자연스럽게 드러나는 관계예요.';
+      } else if (intimacy >= 50 && positivity >= 50) {
+        return '연인으로서 서로에 대한 관심과 긍정적인 감정이 잘 형성되어 있어요.';
+      } else if (participation < 40) {
+        return '소통 빈도가 낮아 연인 관계 발전에 제약이 있을 수 있어요.';
+      } else {
+        return '연인 관계에서 서로를 배려하며 대화를 이어가고 있어요.';
+      }
+    } else {
+      // English
+      if (intimacy < 40) {
+        return 'Although in a romantic relationship, emotional expression and connection are not fully revealed.';
+      } else if (positivity < 40) {
+        return 'Positive emotional exchange seems somewhat lacking in conversations between lovers.';
+      } else if (intimacy >= 70 && positivity >= 60) {
+        return 'Affection and care for each other naturally appear throughout the conversation.';
+      } else if (intimacy >= 50 && positivity >= 50) {
+        return 'As lovers, interest in each other and positive emotions are well-formed.';
+      } else if (participation < 40) {
+        return 'Low communication frequency may limit the development of the romantic relationship.';
+      } else {
+        return 'You continue conversations while being considerate of each other in your romantic relationship.';
+      }
+    }
+  } else {
+    // Other relationship type - use generic summary
+    if (language === 'ko') {
+      return '서로를 배려하며 비교적 안정적인 대화 흐름을 유지하고 있어요.';
+    } else {
+      return 'You are maintaining a relatively stable conversation flow while being considerate of each other.';
+    }
+  }
+};
+
 // Generate workplace-appropriate summary text
 const getWorkMetricsSummary = (result: AnalysisResult, t: (key: string) => string): string => {
   const metrics = getWorkMetrics(result);
@@ -433,7 +518,7 @@ const WordCloud: React.FC<{ result: AnalysisResult; mode: RelationshipMode; chat
 };
 
 const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, chatHistory }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const theme = RELATIONSHIP_THEMES[mode];
   const isRomance = mode === RelationshipMode.ROMANCE;
   const isFriend = mode === RelationshipMode.FRIEND;
@@ -474,7 +559,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
                 <MetricRow label={t('intimacy')} value={result.intimacyScore} barClassName={theme.medium} />
               </div>
               <p className="mt-4 text-sm text-gray-600">
-                {t('relationshipMetricsNote')}
+                {getRelationshipSummary(result, 'lover', language)}
               </p>
             </div>
 
@@ -517,7 +602,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
                   <MetricRow label={t('intimacy')} value={result.intimacyScore} barClassName={theme.medium} />
                 </div>
                 <p className="mt-4 text-sm text-gray-600">
-                  {t('relationshipMetricsNote')}
+                  {getRelationshipSummary(result, 'friend', language)}
                 </p>
               </div>
 
@@ -586,7 +671,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
                   <MetricRow label={t('intimacy')} value={result.intimacyScore} barClassName={theme.medium} />
                 </div>
                 <p className="mt-4 text-sm text-gray-600">
-                  {t('relationshipMetricsNote')}
+                  {getRelationshipSummary(result, 'other', language)}
                 </p>
               </div>
 
@@ -604,22 +689,22 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
             </div>
           ) : (
             /* Fallback: Original Layout for any other modes */
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
-              <div className="itda-card p-5 md:col-span-2">
-                <div className="space-y-3">
-                  <MetricRow label={t('participation')} value={result.balanceRatio.speaker1.percentage} barClassName={theme.medium} />
-                  <MetricRow label={t('positivity')} value={result.sentiment.positive} barClassName={theme.medium} />
-                  <MetricRow label={t('intimacy')} value={result.intimacyScore} barClassName={theme.medium} />
-                </div>
-              </div>
-              <div className="itda-card p-5 md:col-span-3">
-                <div className="flex items-center text-gray-700 mb-3">
-                  <TagIcon className="w-5 h-5 mr-2 text-indigo-500" />
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
+        <div className="itda-card p-5 md:col-span-2">
+          <div className="space-y-3">
+            <MetricRow label={t('participation')} value={result.balanceRatio.speaker1.percentage} barClassName={theme.medium} />
+            <MetricRow label={t('positivity')} value={result.sentiment.positive} barClassName={theme.medium} />
+            <MetricRow label={t('intimacy')} value={result.intimacyScore} barClassName={theme.medium} />
+          </div>
+        </div>
+        <div className="itda-card p-5 md:col-span-3">
+          <div className="flex items-center text-gray-700 mb-3">
+            <TagIcon className="w-5 h-5 mr-2 text-indigo-500" />
                   <h3 className="font-bold">{t('wordCloud')}</h3>
-                </div>
-                <WordCloud result={result} mode={mode} />
-              </div>
-            </div>
+          </div>
+          <WordCloud result={result} mode={mode} />
+        </div>
+      </div>
           )}
         </>
       )}
@@ -691,8 +776,7 @@ const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ result, mode, cha
                     cursor: 'pointer',
                   }}
                   onClick={() => {
-                    // 클릭 시 동작 (선택사항)
-                    console.log('Selected topic:', topic);
+                    // Topic selection handler (optional)
                   }}
                 >
                   {topic}
