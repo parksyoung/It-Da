@@ -5,6 +5,13 @@ export enum RelationshipMode {
   OTHER = 'OTHER',
 }
 
+export interface SafetyWarnings {
+  detected: boolean;
+  level: 'none' | 'low' | 'medium' | 'high';
+  messages: string[];
+  guidance: string[];
+}
+
 export interface AnalysisResult {
   intimacyScore: number;
   balanceRatio: {
@@ -30,6 +37,7 @@ export interface AnalysisResult {
   suggestedReplies: string[];
   attentionPoints: string[]; // 주의할 포인트 (2-3개)
   suggestedTopics: string[]; // 대화 주제 추천 (3개 내외)
+  safetyWarnings?: SafetyWarnings;
 }
 
 export interface SimulationParams {

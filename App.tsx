@@ -7,9 +7,10 @@ import LandingPage from './components/LandingPage';
 import RelationshipMap from './components/RelationshipMap';
 import SelfAnalysis from './components/SelfAnalysis';
 
-import { HeartIcon, RelationshipNodesIcon, SparklesIcon, ArrowLeftIcon, PlusIcon, UserIcon } from './components/icons';
+import { HeartIcon, RelationshipNodesIcon, SparklesIcon, ArrowLeftIcon, PlusIcon, UserIcon, MoonIcon, SunIcon } from './components/icons';
 import { useLanguage } from './contexts/LanguageContext';
 import { useAuth } from './contexts/AuthContext';
+import { useTheme } from './contexts/ThemeContext';
 import ChatInputForm from './components/ChatInputForm';
 import CounselChat from './components/CounselChat';
 
@@ -42,6 +43,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const { language, t, setLanguage } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
 
   const toggleLanguage = () => setLanguage(language === 'ko' ? 'en' : 'ko');
 
@@ -560,13 +562,23 @@ const App: React.FC = () => {
               onClick={toggleLanguage}
               className="itda-btn itda-btn-secondary px-4 py-2 text-sm smooth-transition"
             >
-              {language === 'ko' ? 'EN' : '한국어'}
+              {language === 'ko' ? 'EN' : 'KO'}
+            </button>
+
+            <button
+              onClick={toggleTheme}
+              className="itda-btn itda-btn-secondary px-4 py-2 text-sm smooth-transition"
+              aria-label="Toggle dark mode"
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            >
+              {theme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
             </button>
           </div>
           <div className="flex items-center gap-3">
             <div className="itda-btn itda-btn-secondary px-4 py-2 text-sm">
               {currentUser?.email || currentUser?.displayName || t('user')}
             </div>
+
             <button
               onClick={logout}
               className="itda-btn itda-btn-danger px-4 py-2 text-sm smooth-transition"

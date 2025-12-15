@@ -27,7 +27,30 @@
   --itda-grad-1: radial-gradient(980px 760px at 18% 10%, rgba(197, 139, 215, 0.16) 0%, transparent 64%);
   --itda-grad-2: radial-gradient(980px 760px at 86% 18%, rgba(126, 162, 200, 0.14) 0%, transparent 66%);
   --itda-grad-3: radial-gradient(980px 760px at 55% 92%, rgba(255, 206, 167, 0.12) 0%, transparent 68%);
- }
+}
+
+:root.dark {
+  --itda-bg-0: #0b0c14;
+  --itda-bg-1: #0c1220;
+  --itda-bg-2: #0f1a2a;
+
+  --itda-fg-0: rgba(248, 250, 252, 0.96);
+  --itda-fg-1: rgba(248, 250, 252, 0.82);
+  --itda-fg-2: rgba(226, 232, 240, 0.62);
+
+  --itda-border: rgba(226, 232, 240, 0.12);
+  --itda-border-strong: rgba(226, 232, 240, 0.16);
+
+  --itda-shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.40);
+  --itda-shadow-md: 0 18px 44px rgba(0, 0, 0, 0.46);
+  --itda-shadow-lg: 0 28px 76px rgba(0, 0, 0, 0.52);
+
+  --itda-ring: 0 0 0 6px rgba(197, 139, 215, 0.22);
+
+  --itda-grad-1: radial-gradient(980px 760px at 18% 10%, rgba(197, 139, 215, 0.18) 0%, transparent 64%);
+  --itda-grad-2: radial-gradient(980px 760px at 86% 18%, rgba(126, 162, 200, 0.16) 0%, transparent 66%);
+  --itda-grad-3: radial-gradient(980px 760px at 55% 92%, rgba(255, 206, 167, 0.10) 0%, transparent 68%);
+}
 
 html,
 body {
@@ -50,6 +73,13 @@ body {
   line-height: 1.55;
   font-family: 'Noto Sans KR', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+ .dark body {
+  color: var(--itda-fg-1);
+  background: var(--itda-grad-1), var(--itda-grad-2), var(--itda-grad-3),
+    radial-gradient(1200px 900px at 50% 35%, rgba(255, 255, 255, 0.08) 0%, transparent 62%),
+    linear-gradient(180deg, var(--itda-bg-0) 0%, var(--itda-bg-1) 55%, var(--itda-bg-2) 100%);
+ }
 
 svg {
   font-family: inherit;
@@ -74,6 +104,14 @@ body::before {
   animation: itdaFloat 22s ease-in-out infinite;
 }
 
+ .dark body::before {
+  background:
+    radial-gradient(720px 560px at 18% 20%, rgba(197, 139, 215, 0.22) 0%, transparent 64%),
+    radial-gradient(820px 640px at 82% 28%, rgba(126, 162, 200, 0.18) 0%, transparent 66%),
+    radial-gradient(760px 620px at 55% 86%, rgba(255, 206, 167, 0.14) 0%, transparent 68%);
+  opacity: 0.70;
+ }
+
 body::after {
   content: '';
   position: fixed;
@@ -86,6 +124,13 @@ body::after {
   background-size: 20px 20px;
   mix-blend-mode: soft-light;
 }
+
+ .dark body::after {
+  opacity: 0.16;
+  background-image:
+    radial-gradient(rgba(248, 250, 252, 0.16) 0.55px, transparent 0.55px);
+  mix-blend-mode: overlay;
+ }
 
 @keyframes itdaFloat {
   0% {
@@ -286,34 +331,143 @@ a:hover {
   color: rgba(106, 57, 0, 0.90);
 }
 
+ .dark .itda-surface {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.78) 0%, rgba(15, 23, 42, 0.62) 100%);
+ }
+
+ .dark .itda-surface::before {
+  background: radial-gradient(820px 280px at 22% 0%, rgba(30, 41, 59, 0.72) 0%, transparent 62%);
+  opacity: 0.45;
+ }
+
+ .dark .itda-card {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.60) 100%);
+ }
+
+ .dark .itda-card::before {
+  background: radial-gradient(900px 340px at 30% 0%, rgba(30, 41, 59, 0.70) 0%, transparent 60%);
+  opacity: 0.55;
+ }
+
+ .dark .itda-card-soft {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.74) 0%, rgba(15, 23, 42, 0.56) 100%);
+  border-color: var(--itda-border);
+ }
+
+ .dark .itda-btn-secondary {
+  background: rgba(15, 23, 42, 0.62);
+  color: var(--itda-fg-0);
+  border-color: var(--itda-border);
+ }
+
+ .dark .itda-btn-secondary:hover {
+  background: rgba(15, 23, 42, 0.72);
+ }
+
+ .dark .itda-btn-primary {
+  color: var(--itda-fg-0);
+  border-color: var(--itda-border);
+  background: linear-gradient(90deg, rgba(197, 139, 215, 0.22), rgba(15, 23, 42, 0.74), rgba(126, 162, 200, 0.18));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+ }
+
+ .dark .itda-btn-danger {
+  color: rgba(255, 214, 231, 0.96);
+  border-color: rgba(255, 46, 129, 0.22);
+  background: linear-gradient(180deg, rgba(70, 10, 36, 0.78), rgba(15, 23, 42, 0.70));
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38);
+ }
+
+ .dark .itda-field {
+  background: rgba(15, 23, 42, 0.62);
+  color: var(--itda-fg-0);
+  border-color: var(--itda-border-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+ }
+
+ .dark .itda-field:focus {
+  background: rgba(15, 23, 42, 0.78);
+  border-color: rgba(197, 139, 215, 0.30);
+ }
+
+ .dark .itda-field::placeholder {
+  color: rgba(226, 232, 240, 0.55);
+ }
+
+ .dark .itda-alert {
+  background: rgba(15, 23, 42, 0.62);
+  border-color: var(--itda-border);
+  color: var(--itda-fg-1);
+ }
+
+ .dark .itda-note-item,
+ .dark .itda-nav-item {
+  background: rgba(15, 23, 42, 0.58);
+  border-color: var(--itda-border);
+ }
+
+ .dark .itda-note-item:hover,
+ .dark .itda-nav-item:hover {
+  background: rgba(15, 23, 42, 0.72);
+ }
+
+ .dark .itda-note-item.is-active,
+ .dark .itda-nav-item.is-active {
+  background: rgba(197, 139, 215, 0.14);
+  border-color: rgba(197, 139, 215, 0.22);
+ }
+
+ .dark .itda-pill {
+  background: rgba(197, 139, 215, 0.14);
+  border-color: rgba(197, 139, 215, 0.24);
+  color: rgba(248, 250, 252, 0.90);
+ }
+
 /* Tailwind 유틸 클래스(라이트 톤)를 다크 테마에 맞게 보정 */
-.text-gray-900,
-.text-gray-800 {
+.dark .text-gray-900,
+.dark .text-gray-800 {
   color: var(--itda-fg-0) !important;
 }
 
-.text-gray-700,
-.text-gray-600 {
+.dark .text-gray-700,
+.dark .text-gray-600 {
   color: var(--itda-fg-1) !important;
 }
 
-.text-gray-500,
-.text-gray-400 {
+.dark .text-gray-500,
+.dark .text-gray-400 {
   color: var(--itda-fg-2) !important;
 }
 
-.bg-white,
-.bg-gray-50,
-.bg-gray-100 {
-  background: rgba(255, 255, 255, 0.78) !important;
+.dark .bg-white,
+.dark .bg-gray-50,
+.dark .bg-gray-100 {
+  background: rgba(15, 23, 42, 0.62) !important;
   backdrop-filter: blur(10px);
 }
 
-.border-gray-200,
-.border-gray-300,
-.border-gray-100 {
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border-gray-100 {
   border-color: var(--itda-border) !important;
 }
+
+ .dark * {
+  scrollbar-color: rgba(226, 232, 240, 0.28) rgba(15, 23, 42, 0.55);
+ }
+
+ .dark *::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.55);
+ }
+
+ .dark *::-webkit-scrollbar-thumb {
+  background: rgba(226, 232, 240, 0.18);
+  border: 2px solid rgba(15, 23, 42, 0.55);
+ }
+
+ .dark *::-webkit-scrollbar-thumb:hover {
+  background: rgba(226, 232, 240, 0.26);
+ }
 
 /* 스크롤바(지원 브라우저) */
 * {

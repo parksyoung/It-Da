@@ -1,7 +1,8 @@
 import React from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import { AnalyzeIcon, HeartIcon, SparklesIcon, RelationshipNodesIcon } from './icons';
+import { useTheme } from '../contexts/ThemeContext';
+import { AnalyzeIcon, HeartIcon, SparklesIcon, RelationshipNodesIcon, MoonIcon, SunIcon } from './icons';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -25,6 +26,7 @@ const ProblemCard: React.FC<{ title: string; description: string; color: string;
 const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
     const { t } = useLanguage();
     const { currentUser, loginWithGoogle, logout } = useAuth();
+    const { theme, toggleTheme } = useTheme();
     const [isLoading, setIsLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
 
@@ -60,9 +62,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
     };
 
     return (
-        <div className="h-screen w-full overflow-y-hidden">
-            <div className="itda-container pt-24 md:pt-28 pb-4 md:pb-6 text-center fade-in h-full flex flex-col justify-start">
-                <div className="mx-auto w-16 h-16 rounded-[24px] flex items-center justify-center relative"
+        <div className="min-h-screen w-full relative">
+            <div className="absolute top-5 right-5 z-20">
+                <button
+                    onClick={toggleTheme}
+                    className="itda-btn itda-btn-secondary px-4 py-2 text-sm smooth-transition"
+                    aria-label="Toggle dark mode"
+                    title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                >
+                    {theme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
+                </button>
+            </div>
+            <div className="itda-container py-12 md:py-20 text-center fade-in">
+                <div className="mx-auto w-20 h-20 rounded-[28px] flex items-center justify-center relative"
                     style={{
                         background: 'linear-gradient(135deg, rgba(255,79,179,0.35), rgba(124,92,255,0.22))',
                         border: '1px solid rgba(31,22,53,0.10)',

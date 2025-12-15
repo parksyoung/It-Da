@@ -373,6 +373,169 @@ const getPersonaMap = (language: 'ko' | 'en'): Record<string, PersonaInfo> => {
   };
 };
 
+const personaMapEn: Record<string, PersonaInfo> = {
+  'I-F-Tx-Fst': {
+    name: 'A Conversation Starter',
+    subtitle: 'An empathetic leader who doesn’t hold back',
+    summary: 'You rarely hesitate to start a conversation. Even if the other person replies late, you tend not to overthink it. You like sharing feelings first, but you express yourself clearly through text. Your fast replies show your effort to keep the conversation flowing.',
+    tips: [
+      'A late reply doesn’t always mean they don’t care.',
+      'Starting with empathy often opens hearts faster.',
+      'One short reaction can be as effective as a long explanation.',
+    ],
+  },
+  'I-F-Em-Fst': {
+    name: 'Spontaneous Energy',
+    subtitle: 'A friendly leader who speaks in emojis',
+    summary: 'Starting a conversation feels natural to you. You express emotions richly with emojis and lively reactions. Your quick replies set the tempo, but sometimes slowing down a bit can also help the relationship breathe.',
+    tips: [
+      'You often respond best to short, clear messages.',
+      'An emoji alone can communicate a lot of emotion.',
+      'If you’re busy, even a quick “I’ll reply later” is enough.',
+    ],
+  },
+  'I-F-Tx-Slw': {
+    name: 'Calm Empathy Leader',
+    subtitle: 'Leads gently with thoughtful text',
+    summary: 'You don’t mind initiating, but you reply at a relaxed pace. You prioritize emotional connection, while keeping your messages clear and text-focused. You prefer depth and sincerity over speed.',
+    tips: [
+      'Empathy first often opens hearts faster.',
+      'You’re comfortable waiting with warmth and patience.',
+      'You prefer clean, text-based messages with depth.',
+    ],
+  },
+  'I-F-Em-Slw': {
+    name: 'Warm Initiator',
+    subtitle: 'A relaxed leader who shares feelings with emojis',
+    summary: 'You’re comfortable starting conversations, but you reply with a bit more breathing room. You enjoy sharing emotions through emojis and value deeper emotional connection. You prefer sincere responses over instant replies.',
+    tips: [
+      'Empathy and small emoji reactions can be powerful.',
+      'You’re okay waiting patiently when needed.',
+      'Sharing feelings first can lead to deeper talks.',
+    ],
+  },
+  'I-T-Tx-Fst': {
+    name: 'Efficient Solution Partner',
+    subtitle: 'Fast, goal-oriented communicator',
+    summary: 'You like leading conversations with purpose. You focus on solutions more than emotions and communicate clearly through text. Your speed helps efficiency, but sometimes adding a bit more emotional acknowledgment can improve connection.',
+    tips: [
+      'Direct wording can sound cold—try not to assume bad intent.',
+      'You may prioritize fixing the problem over expressing feelings.',
+      'You prefer concrete and specific feedback.',
+    ],
+  },
+  'I-T-Em-Fst': {
+    name: 'Practical & Playful',
+    subtitle: 'A solution finder who softens the mood with emojis',
+    summary: 'You enjoy taking the lead and prefer practical, solution-driven communication. You use emojis to keep the tone friendly while still delivering the core message. You value efficiency, but your emoji reactions also show consideration.',
+    tips: [
+      'You like conversations where the point is delivered quickly.',
+      'A conclusion + a small reaction is often enough.',
+      'Others may feel pressured by speed—reassure them it’s okay to reply later.',
+    ],
+  },
+  'I-T-Tx-Slw': {
+    name: 'Thoughtful Planner',
+    subtitle: 'Logical and careful before speaking',
+    summary: 'You’re not afraid to initiate, but you prefer thinking things through before sending a message. You communicate logically and clearly with text. You value depth and accuracy over speed.',
+    tips: [
+      'You prefer clear and logical explanations.',
+      'You’re comfortable receiving replies after someone has thought it through.',
+      'Your direct tone may feel blunt, but the intention is usually warm.',
+    ],
+  },
+  'I-T-Em-Slw': {
+    name: 'Relaxed Problem Solver',
+    subtitle: 'A calm leader who keeps things friendly with emojis',
+    summary: 'You can initiate easily, but you prefer responding after you’ve organized your thoughts. You are solution-oriented, while using emojis to keep the atmosphere light. You value steady, considerate communication.',
+    tips: [
+      'You prefer clear and logical explanations.',
+      'Your emojis help soften the tone and show care.',
+      'You’re okay with giving and receiving replies with breathing room.',
+    ],
+  },
+  'R-F-Tx-Fst': {
+    name: 'Quick Empathizer',
+    subtitle: 'Emotional and fast with text',
+    summary: 'You’re more likely to respond than to initiate. You read emotions well and express empathy through calm text. Your quick replies show your effort not to break the flow of the conversation.',
+    tips: [
+      'Empathy first often opens hearts faster.',
+      'Fast replies help build trust.',
+      'You prefer clean, text-focused messages.',
+    ],
+  },
+  'R-F-Em-Fst': {
+    name: 'Instant Reactor',
+    subtitle: 'Friendly and fast with emoji reactions',
+    summary: 'You don’t always initiate, but you respond quickly—often with emojis. You express feelings richly and try to keep the flow going with fast reactions.',
+    tips: [
+      'An emoji alone can communicate plenty.',
+      'You match the relationship tempo with quick replies.',
+      'You respond best to short, clear messages.',
+    ],
+  },
+  'R-F-Tx-Slw': {
+    name: 'Quiet Observer',
+    subtitle: 'Responds thoughtfully when it matters',
+    summary: 'You prefer responding carefully rather than initiating. You empathize well, but keep your expression calm and text-based. You like deep conversations and tend to reply after organizing your thoughts.',
+    tips: [
+      'Late replies often mean you’re thinking, not that you don’t care.',
+      'Empathy first often opens hearts faster.',
+      'You prefer fewer messages with more depth.',
+    ],
+  },
+  'R-F-Em-Slw': {
+    name: 'Warm Responder',
+    subtitle: 'Careful, but affectionate with emojis',
+    summary: 'You respond warmly rather than initiating first. You express emotions through emojis, but you take your time. You value sincere replies more than instant speed.',
+    tips: [
+      'You’re ready to respond warmly even if it takes time.',
+      'Short empathy + a small reaction can be powerful.',
+      'Not forcing speed makes communication feel safer for everyone.',
+    ],
+  },
+  'R-T-Tx-Fst': {
+    name: 'Efficient Responder',
+    subtitle: 'Quick and clear problem solver',
+    summary: 'You tend to respond quickly and logically rather than initiate. You like solution-focused communication and prefer clear text. You value efficiency, but adding a small emotional acknowledgment can strengthen connection.',
+    tips: [
+      'You prefer concrete and specific feedback.',
+      'You value efficiency and quick responses.',
+      'Direct wording can sound cold—try not to assume bad intent.',
+    ],
+  },
+  'R-T-Em-Fst': {
+    name: 'Fast Fixer',
+    subtitle: 'Softens the tone with emojis while staying practical',
+    summary: 'You respond quickly and prefer a solution-driven approach. You use emojis to keep things friendly while still being clear and direct.',
+    tips: [
+      'You like logical conversations with a light tone.',
+      'Others may feel pressured by speed—reassure them it’s okay to reply later.',
+      'A conclusion + a small reaction is often enough.',
+    ],
+  },
+  'R-T-Tx-Slw': {
+    name: 'Thoughtful Analyst',
+    subtitle: 'Logical and reflective before replying',
+    summary: 'You prefer analyzing what the other person said and replying after thinking it through. You focus on solutions over feelings and prefer well-structured text. You value accuracy and clarity.',
+    tips: [
+      'Late replies often mean you’re thinking carefully.',
+      'You prefer clear and logical explanations.',
+      'Your direct tone may feel blunt, but the intention is usually warm.',
+    ],
+  },
+  'R-T-Em-Slw': {
+    name: 'Relaxed Problem Solver',
+    subtitle: 'A careful responder who keeps things light with emojis',
+    summary: 'You observe first and respond when needed. You’re solution-oriented, but use emojis to soften the mood. You prefer a relaxed reply tempo and steady communication.',
+    tips: [
+      'Late replies often mean you need time to organize thoughts.',
+      'You prefer logical conversations with a light tone.',
+      'Not forcing speed makes communication more comfortable.',
+    ],
+  },
+};
+
 // Get persona info for a personality code
 const getPersonaInfo = (code: PersonalityCode, language: 'ko' | 'en'): PersonaInfo => {
   const codeString = `${code.initiative}-${code.emotion}-${code.expression}-${code.tempo}`;

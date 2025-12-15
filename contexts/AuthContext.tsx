@@ -39,16 +39,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error: any) {
-      console.error('Google 로그인 오류:', error);
-      if (error.code === 'auth/invalid-api-key') {
-        throw new Error('Firebase API 키가 유효하지 않습니다. .env.local 파일을 확인하세요.');
-      }
-      if (error.code === 'auth/popup-closed-by-user') {
-        throw new Error('로그인 팝업이 닫혔습니다. 다시 시도해주세요.');
-      }
-      if (error.code === 'auth/popup-blocked') {
-        throw new Error('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
-      }
+      console.error('Google login error:', error);
       throw error;
     }
   };
@@ -62,7 +53,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await signOut(auth);
     } catch (error) {
-      console.error('로그아웃 오류:', error);
+      console.error('Logout error:', error);
       throw error;
     }
   };
@@ -82,9 +73,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setLoading(false);
         },
         (error) => {
-          console.error('인증 상태 변경 오류:', error);
+          console.error('Auth state change error:', error);
           if (error.code === 'auth/invalid-api-key') {
-            console.error('❌ Firebase API 키 오류: .env.local 파일을 확인하고 개발 서버를 재시작하세요.');
+            console.error('❌ Firebase API key error: Check .env.local and restart the dev server.');
           }
           setLoading(false);
         }
@@ -92,7 +83,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       return unsubscribe;
     } catch (error) {
-      console.error('Firebase Auth 상태 감지 오류:', error);
+      console.error('Firebase Auth listener error:', error);
       setLoading(false);
     }
   }, []);

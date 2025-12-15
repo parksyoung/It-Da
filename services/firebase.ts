@@ -35,11 +35,11 @@ if (import.meta.env.DEV) {
   
   if (missingVars.length > 0) {
     console.warn(
-      '⚠️ Firebase 환경 변수가 설정되지 않았습니다. .env.local 파일을 확인하세요.',
-      '누락된 변수:', missingVars
+      '⚠️ Firebase environment variables are not set. Please check your .env.local file.',
+      'Missing vars:', missingVars
     );
-    console.info('현재 사용 중인 Firebase 설정:', {
-      apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : '없음',
+    console.info('Current Firebase config:', {
+      apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'none',
       authDomain: firebaseConfig.authDomain,
       projectId: firebaseConfig.projectId,
     });
@@ -62,21 +62,16 @@ try {
     app = getApp();
   }
 
-  // Auth 인스턴스 생성 (동일한 app 인스턴스 재사용)
+  // Auth instance
   auth = getAuth(app);
   if (!auth) {
-    throw new Error('Firebase Auth 초기화 실패: auth 인스턴스를 생성할 수 없습니다.');
+    throw new Error('Failed to initialize Firebase Auth: could not create auth instance.');
   }
 
-  // Google Auth Provider 생성
+  // Google Auth Provider
   googleProvider = new GoogleAuthProvider();
   
-  // Firestore 인스턴스 생성 (동일한 app 인스턴스 재사용)
-  // unavailable(네트워크/프록시/방화벽) 환경에서 WebChannel이 막히는 경우가 있어
-  // long-polling을 사용하도록 설정합니다.
-  // 단, 개발 중 HMR로 모듈이 재실행될 때 initializeFirestore를 다시 호출하면
-  // "already been started" 류 에러로 앱이 크래시(흰 화면)날 수 있으므로
-  // 최초 초기화 때만 initializeFirestore를 사용하고 이후에는 기존 인스턴스를 재사용합니다.
+  // Firestore instance
   db = hasExistingApp
     ? getFirestore(app)
     : initializeFirestore(app, {
@@ -84,7 +79,7 @@ try {
         useFetchStreams: false,
       });
   if (!db) {
-    throw new Error('Firestore 초기화 실패: db 인스턴스를 생성할 수 없습니다.');
+    throw new Error('Failed to initialize Firestore: could not create db instance.');
   }
   
   // 초기화 완료 로그 (단 1번만 출력)
@@ -93,18 +88,18 @@ try {
       authDomain: firebaseConfig.authDomain,
     });
 } catch (error: any) {
-  console.error('❌ Firebase 초기화 실패:', error);
+  console.error('❌ Firebase initialization failed:', error);
   if (error.code === 'auth/invalid-api-key' || error.code === 'app/invalid-app-options') {
-    console.error('Firebase 설정이 유효하지 않습니다.');
-    console.error('현재 설정:', {
-      apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 15)}...` : '없음',
+    console.error('Firebase configuration is invalid.');
+    console.error('Current config:', {
+      apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 15)}...` : 'none',
       authDomain: firebaseConfig.authDomain,
       projectId: firebaseConfig.projectId,
     });
-    console.error('해결 방법:');
-    console.error('1. 프로젝트 루트에 .env.local 파일 생성');
-    console.error('2. VITE_FIREBASE_API_KEY 등 환경 변수 설정');
-    console.error('3. 개발 서버 재시작 (npm run dev)');
+    console.error('How to fix:');
+    console.error('1. Create a .env.local file at the project root');
+    console.error('2. Set VITE_FIREBASE_API_KEY and other env vars');
+    console.error('3. Restart the dev server (npm run dev)');
   }
   throw error;
 }
@@ -179,7 +174,7 @@ export const getPersonData = async (personName: string): Promise<PersonData | nu
     
     // Firestore 미설정(데이터베이스 생성 전)에서 자주 발생
     if (error?.code === 'failed-precondition') {
-      throw errorWithCode('Firestore Database가 아직 생성/활성화되지 않았습니다. Firebase Console에서 Firestore Database를 생성한 뒤 다시 시도해주세요.', error?.code);
+      throw errorWithCode('Firestore Database is not created/enabled yet. Create Firestore Database in Firebase Console and try again.', error?.code);
     }
 
     // 오프라인 오류인 경우 특별 처리
@@ -241,7 +236,7 @@ export const getCounselMessages = async (personName: string): Promise<CounselMes
     });
 
     if (error?.code === 'failed-precondition') {
-      throw errorWithCode('Firestore Database가 아직 생성/활성화되지 않았습니다. Firebase Console에서 Firestore Database를 생성한 뒤 다시 시도해주세요.', error?.code);
+      throw errorWithCode('Firestore Database is not created/enabled yet. Create Firestore Database in Firebase Console and try again.', error?.code);
     }
 
     if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
@@ -290,7 +285,7 @@ export const saveCounselMessages = async (personName: string, messages: CounselM
     });
 
     if (error?.code === 'failed-precondition') {
-      throw errorWithCode('Firestore Database가 아직 생성/활성화되지 않았습니다. Firebase Console에서 Firestore Database를 생성한 뒤 다시 시도해주세요.', error?.code);
+      throw errorWithCode('Firestore Database is not created/enabled yet. Create Firestore Database in Firebase Console and try again.', error?.code);
     }
 
     if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
@@ -360,9 +355,9 @@ export const savePersonData = async (
       stack: error?.stack,
     });
     
-    // Firestore 미설정(데이터베이스 생성 전)에서 자주 발생
+    // Common when Firestore Database is not created yet
     if (error?.code === 'failed-precondition') {
-      throw errorWithCode('Firestore Database가 아직 생성/활성화되지 않았습니다. Firebase Console에서 Firestore Database를 생성한 뒤 다시 시도해주세요.', error?.code);
+      throw errorWithCode('Firestore Database is not created/enabled yet. Create Firestore Database in Firebase Console and try again.', error?.code);
     }
 
     // 오프라인 오류인 경우 특별 처리
@@ -418,7 +413,7 @@ export const deletePerson = async (personName: string): Promise<void> => {
     
     // Firestore 미설정(데이터베이스 생성 전)에서 자주 발생
     if (error?.code === 'failed-precondition') {
-      throw errorWithCode('Firestore Database가 아직 생성/활성화되지 않았습니다. Firebase Console에서 Firestore Database를 생성한 뒤 다시 시도해주세요.', error?.code);
+      throw errorWithCode('Firestore Database is not created/enabled yet. Create Firestore Database in Firebase Console and try again.', error?.code);
     }
 
     // 오프라인 오류인 경우 특별 처리
@@ -503,7 +498,7 @@ export const getAllPersonsAsAnalyses = async (): Promise<StoredAnalysis[]> => {
     
     // Firestore 미설정(데이터베이스 생성 전)에서 자주 발생
     if (error?.code === 'failed-precondition') {
-      throw errorWithCode('Firestore Database가 아직 생성/활성화되지 않았습니다. Firebase Console에서 Firestore Database를 생성한 뒤 다시 시도해주세요.', error?.code);
+      throw errorWithCode('Firestore Database is not created/enabled yet. Create Firestore Database in Firebase Console and try again.', error?.code);
     }
 
     // 오프라인 오류인 경우 특별 처리
