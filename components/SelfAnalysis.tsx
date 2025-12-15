@@ -221,7 +221,7 @@ const getPersonaMap = (language: 'ko' | 'en'): Record<string, PersonaInfo> => {
     ],
   },
   'I-F-Em-Fst': {
-    name: '즉흥 에너지 충',
+    name: '즉흥 에너지형',
     subtitle: '이모지로 감정을 전달하는 친근한 리더',
     summary: '대화를 시작하는 것이 어렵지 않은 타입이에요. 이모지와 다양한 표현으로 감정을 풍부하게 전달하는 스타일입니다. 빠른 응답으로 관계의 템포를 이끌어가지만, 가끔은 한 템포 쉬어가는 여유도 관계에 도움이 될 수 있어요.',
     tips: [
