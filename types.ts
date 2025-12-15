@@ -22,6 +22,7 @@ export interface AnalysisResult {
   };
   summary: string;
   recommendation: string;
+  safetyWarnings?: string[];
   sentimentFlow: {
     time_percentage: number;
     sentiment_score: number; // -1 to 1

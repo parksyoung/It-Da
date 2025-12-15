@@ -27,6 +27,132 @@
   --itda-grad-1: radial-gradient(980px 760px at 18% 10%, rgba(197, 139, 215, 0.16) 0%, transparent 64%);
   --itda-grad-2: radial-gradient(980px 760px at 86% 18%, rgba(126, 162, 200, 0.14) 0%, transparent 66%);
   --itda-grad-3: radial-gradient(980px 760px at 55% 92%, rgba(255, 206, 167, 0.12) 0%, transparent 68%);
+
+  --itda-surface-from: rgba(255, 255, 255, 0.82);
+  --itda-surface-to: rgba(255, 255, 255, 0.70);
+  --itda-surface-sheen: rgba(255, 255, 255, 0.88);
+
+  --itda-card-from: rgba(255, 255, 255, 0.90);
+  --itda-card-to: rgba(255, 255, 255, 0.76);
+  --itda-card-sheen: rgba(255, 255, 255, 0.90);
+
+  --itda-card-soft-from: rgba(255, 255, 255, 0.82);
+  --itda-card-soft-to: rgba(255, 255, 255, 0.66);
+
+  --itda-field-bg: rgba(255, 255, 255, 0.78);
+  --itda-field-bg-focus: rgba(255, 255, 255, 0.92);
+  --itda-field-placeholder: rgba(43, 36, 51, 0.42);
+
+  --itda-alert-bg: rgba(255, 255, 255, 0.72);
+  --itda-scroll-track: rgba(255, 255, 255, 0.55);
+  --itda-scroll-thumb: rgba(31, 22, 53, 0.16);
+  --itda-scroll-thumb-hover: rgba(31, 22, 53, 0.22);
+  --itda-dot: rgba(43, 36, 51, 0.18);
+
+  --itda-secondary-bg: rgba(255, 255, 255, 0.72);
+  --itda-secondary-bg-hover: rgba(255, 255, 255, 0.82);
+  --itda-nav-bg: rgba(255, 255, 255, 0.70);
+  --itda-nav-bg-hover: rgba(255, 255, 255, 0.86);
+  --itda-note-bg: rgba(255, 255, 255, 0.72);
+  --itda-note-bg-hover: rgba(255, 255, 255, 0.84);
+  --itda-note-bg-active: rgba(255, 255, 255, 0.86);
+  --itda-note-border-active: rgba(197, 139, 215, 0.22);
+  --itda-pill-bg: rgba(197, 139, 215, 0.12);
+  --itda-pill-border: rgba(197, 139, 215, 0.22);
+  --itda-pill-fg: rgba(43, 36, 51, 0.84);
+
+  --itda-alert-error-bg: rgba(255, 46, 129, 0.12);
+  --itda-alert-error-border: rgba(255, 46, 129, 0.20);
+  --itda-alert-error-fg: rgba(107, 4, 48, 0.94);
+
+  --itda-alert-warn-bg: rgba(255, 199, 74, 0.20);
+  --itda-alert-warn-border: rgba(255, 199, 74, 0.30);
+  --itda-alert-warn-fg: rgba(106, 57, 0, 0.90);
+
+  --itda-chat-user-bg: rgba(126, 162, 200, 0.14);
+  --itda-chat-user-border: rgba(126, 162, 200, 0.22);
+  --itda-chat-assistant-bg: rgba(197, 139, 215, 0.12);
+  --itda-chat-assistant-border: rgba(197, 139, 215, 0.22);
+
+  --itda-tw-bg: rgba(255, 255, 255, 0.78);
+  --itda-tw-border: var(--itda-border);
+ }
+
+ :root[data-theme='dark'] {
+  --itda-bg-0: #0b0c10;
+  --itda-bg-1: #0f1016;
+  --itda-bg-2: #131525;
+
+  --itda-fg-0: #f4f2ff;
+  --itda-fg-1: rgba(244, 242, 255, 0.86);
+  --itda-fg-2: rgba(244, 242, 255, 0.60);
+
+  --itda-primary-500: #b989ff;
+  --itda-primary-600: #9f6ef3;
+  --itda-accent-500: #6db6ff;
+  --itda-accent-600: #4aa2ff;
+
+  --itda-border: rgba(244, 242, 255, 0.12);
+  --itda-border-strong: rgba(244, 242, 255, 0.18);
+
+  --itda-shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.34);
+  --itda-shadow-md: 0 18px 44px rgba(0, 0, 0, 0.40);
+  --itda-shadow-lg: 0 28px 76px rgba(0, 0, 0, 0.46);
+
+  --itda-ring: 0 0 0 6px rgba(185, 137, 255, 0.20);
+
+  --itda-grad-1: radial-gradient(980px 760px at 18% 10%, rgba(185, 137, 255, 0.18) 0%, transparent 64%);
+  --itda-grad-2: radial-gradient(980px 760px at 86% 18%, rgba(109, 182, 255, 0.16) 0%, transparent 66%);
+  --itda-grad-3: radial-gradient(980px 760px at 55% 92%, rgba(255, 162, 114, 0.12) 0%, transparent 68%);
+
+  --itda-surface-from: rgba(18, 19, 30, 0.78);
+  --itda-surface-to: rgba(12, 12, 18, 0.62);
+  --itda-surface-sheen: rgba(244, 242, 255, 0.08);
+
+  --itda-card-from: rgba(22, 23, 36, 0.82);
+  --itda-card-to: rgba(12, 12, 18, 0.66);
+  --itda-card-sheen: rgba(244, 242, 255, 0.08);
+
+  --itda-card-soft-from: rgba(18, 19, 30, 0.72);
+  --itda-card-soft-to: rgba(12, 12, 18, 0.58);
+
+  --itda-field-bg: rgba(18, 19, 30, 0.72);
+  --itda-field-bg-focus: rgba(24, 26, 42, 0.82);
+  --itda-field-placeholder: rgba(244, 242, 255, 0.42);
+
+  --itda-alert-bg: rgba(18, 19, 30, 0.72);
+  --itda-scroll-track: rgba(18, 19, 30, 0.55);
+  --itda-scroll-thumb: rgba(244, 242, 255, 0.16);
+  --itda-scroll-thumb-hover: rgba(244, 242, 255, 0.24);
+  --itda-dot: rgba(244, 242, 255, 0.14);
+
+  --itda-secondary-bg: rgba(18, 19, 30, 0.72);
+  --itda-secondary-bg-hover: rgba(24, 26, 42, 0.82);
+  --itda-nav-bg: rgba(18, 19, 30, 0.68);
+  --itda-nav-bg-hover: rgba(24, 26, 42, 0.78);
+  --itda-note-bg: rgba(18, 19, 30, 0.72);
+  --itda-note-bg-hover: rgba(24, 26, 42, 0.82);
+  --itda-note-bg-active: rgba(24, 26, 42, 0.88);
+  --itda-note-border-active: rgba(185, 137, 255, 0.26);
+  --itda-pill-bg: rgba(185, 137, 255, 0.16);
+  --itda-pill-border: rgba(185, 137, 255, 0.26);
+  --itda-pill-fg: rgba(244, 242, 255, 0.86);
+
+  --itda-alert-error-bg: rgba(255, 46, 129, 0.12);
+  --itda-alert-error-border: rgba(255, 46, 129, 0.22);
+  --itda-alert-error-fg: rgba(255, 200, 224, 0.92);
+
+  --itda-alert-warn-bg: rgba(255, 199, 74, 0.14);
+  --itda-alert-warn-border: rgba(255, 199, 74, 0.22);
+  --itda-alert-warn-fg: rgba(255, 230, 185, 0.92);
+
+  --itda-chat-user-bg: rgba(109, 182, 255, 0.14);
+  --itda-chat-user-border: rgba(109, 182, 255, 0.22);
+  --itda-chat-assistant-bg: rgba(185, 137, 255, 0.14);
+  --itda-chat-assistant-border: rgba(185, 137, 255, 0.22);
+
+  --itda-tw-bg: rgba(18, 19, 30, 0.72);
+  --itda-tw-border: rgba(244, 242, 255, 0.14);
  }
 
 html,
@@ -38,7 +164,7 @@ body {
   margin: 0;
   color: var(--itda-fg-1);
   background: var(--itda-grad-1), var(--itda-grad-2), var(--itda-grad-3),
-    radial-gradient(1200px 900px at 50% 35%, rgba(255, 255, 255, 0.70) 0%, transparent 62%),
+    radial-gradient(1200px 900px at 50% 35%, var(--itda-bg-0) 0%, transparent 62%),
     linear-gradient(180deg, var(--itda-bg-0) 0%, var(--itda-bg-1) 55%, var(--itda-bg-2) 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -67,9 +193,9 @@ body::before {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(720px 560px at 18% 20%, rgba(197, 139, 215, 0.16) 0%, transparent 64%),
-    radial-gradient(820px 640px at 82% 28%, rgba(126, 162, 200, 0.14) 0%, transparent 66%),
-    radial-gradient(760px 620px at 55% 86%, rgba(255, 206, 167, 0.12) 0%, transparent 68%);
+    radial-gradient(720px 560px at 18% 20%, var(--itda-grad-1) 0%, transparent 64%),
+    radial-gradient(820px 640px at 82% 28%, var(--itda-grad-2) 0%, transparent 66%),
+    radial-gradient(760px 620px at 55% 86%, var(--itda-grad-3) 0%, transparent 68%);
   filter: blur(22px);
   animation: itdaFloat 22s ease-in-out infinite;
 }
@@ -82,7 +208,7 @@ body::after {
   z-index: 0;
   opacity: 0.18;
   background-image:
-    radial-gradient(rgba(43, 36, 51, 0.18) 0.55px, transparent 0.55px);
+    radial-gradient(var(--itda-dot) 0.55px, transparent 0.55px);
   background-size: 20px 20px;
   mix-blend-mode: soft-light;
 }
@@ -127,7 +253,7 @@ a:hover {
 
 .itda-surface {
   position: relative;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0.70) 100%);
+  background: linear-gradient(180deg, var(--itda-surface-from) 0%, var(--itda-surface-to) 100%);
   border: 1px solid var(--itda-border);
   box-shadow: var(--itda-shadow-lg);
   backdrop-filter: blur(10px);
@@ -140,13 +266,13 @@ a:hover {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(820px 280px at 22% 0%, rgba(255, 255, 255, 0.88) 0%, transparent 62%);
+  background: radial-gradient(820px 280px at 22% 0%, var(--itda-surface-sheen) 0%, transparent 62%);
   opacity: 0.34;
 }
 
 .itda-card {
   position: relative;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.90) 0%, rgba(255, 255, 255, 0.76) 100%);
+  background: linear-gradient(180deg, var(--itda-card-from) 0%, var(--itda-card-to) 100%);
   border: 1px solid var(--itda-border);
   border-radius: var(--itda-radius-xl);
   box-shadow: var(--itda-shadow-md);
@@ -159,7 +285,7 @@ a:hover {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(900px 340px at 30% 0%, rgba(255, 255, 255, 0.90) 0%, transparent 60%);
+  background: radial-gradient(900px 340px at 30% 0%, var(--itda-card-sheen) 0%, transparent 60%);
   opacity: 0.35;
 }
 
@@ -171,7 +297,7 @@ a:hover {
 
 .itda-card-soft {
   position: relative;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0.66) 100%);
+  background: linear-gradient(180deg, var(--itda-card-soft-from) 0%, var(--itda-card-soft-to) 100%);
   border: 1px solid rgba(31, 22, 53, 0.10);
   border-radius: var(--itda-radius-xl);
   box-shadow: var(--itda-shadow-sm);
@@ -219,14 +345,14 @@ a:hover {
 }
 
 .itda-btn-secondary {
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--itda-secondary-bg);
   color: var(--itda-fg-0);
   border-color: rgba(43, 36, 51, 0.10);
   backdrop-filter: blur(10px);
 }
 
 .itda-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--itda-secondary-bg-hover);
 }
 
 .itda-btn-danger {
@@ -244,7 +370,7 @@ a:hover {
   width: 100%;
   border-radius: 14px;
   border: 1px solid var(--itda-border-strong);
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--itda-field-bg);
   padding: 12px 14px;
   color: var(--itda-fg-0);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
@@ -255,11 +381,11 @@ a:hover {
   outline: none;
   box-shadow: var(--itda-ring);
   border-color: rgba(197, 139, 215, 0.28);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--itda-field-bg-focus);
 }
 
 .itda-field::placeholder {
-  color: rgba(43, 36, 51, 0.42);
+  color: var(--itda-field-placeholder);
 }
 
 .itda-muted {
@@ -270,20 +396,35 @@ a:hover {
   border-radius: 14px;
   padding: 12px 14px;
   border: 1px solid rgba(31, 22, 53, 0.12);
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--itda-alert-bg);
   backdrop-filter: blur(10px);
 }
 
 .itda-alert-error {
-  background: rgba(255, 46, 129, 0.12);
-  border-color: rgba(255, 46, 129, 0.20);
-  color: rgba(107, 4, 48, 0.94);
+  background: var(--itda-alert-error-bg);
+  border-color: var(--itda-alert-error-border);
+  color: var(--itda-alert-error-fg);
 }
 
 .itda-alert-warn {
-  background: rgba(255, 199, 74, 0.20);
-  border-color: rgba(255, 199, 74, 0.30);
-  color: rgba(106, 57, 0, 0.90);
+  background: var(--itda-alert-warn-bg);
+  border-color: var(--itda-alert-warn-border);
+  color: var(--itda-alert-warn-fg);
+}
+
+.itda-chat-bubble {
+  border-radius: 16px;
+  padding: 10px 12px;
+}
+
+.itda-chat-bubble-user {
+  background: var(--itda-chat-user-bg);
+  border-color: var(--itda-chat-user-border);
+}
+
+.itda-chat-bubble-assistant {
+  background: var(--itda-chat-assistant-bg);
+  border-color: var(--itda-chat-assistant-border);
 }
 
 /* Tailwind 유틸 클래스(라이트 톤)를 다크 테마에 맞게 보정 */
@@ -305,20 +446,20 @@ a:hover {
 .bg-white,
 .bg-gray-50,
 .bg-gray-100 {
-  background: rgba(255, 255, 255, 0.78) !important;
+  background: var(--itda-tw-bg) !important;
   backdrop-filter: blur(10px);
 }
 
 .border-gray-200,
 .border-gray-300,
 .border-gray-100 {
-  border-color: var(--itda-border) !important;
+  border-color: var(--itda-tw-border) !important;
 }
 
 /* 스크롤바(지원 브라우저) */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(31, 22, 53, 0.22) rgba(255, 255, 255, 0.55);
+  scrollbar-color: var(--itda-scroll-thumb-hover) var(--itda-scroll-track);
 }
 
 *::-webkit-scrollbar {
@@ -327,17 +468,17 @@ a:hover {
 }
 
 *::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--itda-scroll-track);
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgba(31, 22, 53, 0.16);
+  background: var(--itda-scroll-thumb);
   border-radius: 999px;
-  border: 2px solid rgba(255, 255, 255, 0.55);
+  border: 2px solid var(--itda-scroll-track);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(31, 22, 53, 0.22);
+  background: var(--itda-scroll-thumb-hover);
 }
 
 .itda-shell {
@@ -384,7 +525,7 @@ a:hover {
   text-align: left;
   border-radius: 16px;
   border: 1px solid rgba(43, 36, 51, 0.10);
-  background: rgba(255, 255, 255, 0.70);
+  background: var(--itda-nav-bg);
   padding: 12px;
   cursor: pointer;
   transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
@@ -392,7 +533,7 @@ a:hover {
 
 .itda-nav-item:hover {
   transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--itda-nav-bg-hover);
   border-color: rgba(43, 36, 51, 0.14);
 }
 
@@ -406,7 +547,7 @@ a:hover {
   text-align: left;
   border-radius: 18px;
   border: 1px solid rgba(43, 36, 51, 0.10);
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--itda-note-bg);
   padding: 12px 12px;
   cursor: pointer;
   transition: transform 140ms ease, background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
@@ -428,14 +569,14 @@ a:hover {
 
 .itda-note-item:hover {
   transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--itda-note-bg-hover);
   border-color: rgba(43, 36, 51, 0.14);
   box-shadow: 0 16px 36px rgba(43, 36, 51, 0.08);
 }
 
 .itda-note-item.is-active {
-  background: rgba(255, 255, 255, 0.86);
-  border-color: rgba(197, 139, 215, 0.22);
+  background: var(--itda-note-bg-active);
+  border-color: var(--itda-note-border-active);
 }
 
 .itda-pill {
@@ -445,9 +586,9 @@ a:hover {
   height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  background: rgba(197, 139, 215, 0.12);
-  border: 1px solid rgba(197, 139, 215, 0.22);
-  color: rgba(43, 36, 51, 0.84);
+  background: var(--itda-pill-bg);
+  border: 1px solid var(--itda-pill-border);
+  color: var(--itda-pill-fg);
   font-weight: 800;
   font-size: 12px;
 }

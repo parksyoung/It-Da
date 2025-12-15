@@ -184,6 +184,45 @@ export const analyzeChat = async (chatText: string, mode: RelationshipMode, lang
   return analyzeConversation(chatText, mode, language);
 };
 
+export const translateAnalysisResult = async (
+  source: AnalysisResult,
+  targetLanguage: 'ko' | 'en'
+): Promise<AnalysisResult> => {
+  const prompt = `
+You are a professional translator.
+
+Task:
+- Translate the following JSON analysis result to ${targetLanguage === 'ko' ? 'Korean' : 'English'}.
+
+Rules:
+- Output MUST be valid JSON matching the provided schema.
+- Preserve the exact JSON structure and keep all numbers unchanged.
+- Do NOT translate proper names (e.g., speaker names) or identifiers.
+- Translate all user-facing text fields: summary, recommendation, suggestedReplies, attentionPoints, suggestedTopics.
+
+Input JSON:
+${JSON.stringify(source)}
+`;
+
+  try {
+    const ai = getAi();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: analysisSchema,
+      },
+    });
+
+    const jsonString = response.text.trim();
+    return JSON.parse(jsonString) as AnalysisResult;
+  } catch (error) {
+    console.error('Error translating analysis result:', error);
+    throw new Error(targetLanguage === 'ko' ? '분석 결과 번역에 실패했습니다.' : 'Failed to translate the analysis result.');
+  }
+};
+
 export const counselConversation = async (
   historyString: string,
   userQuestion: string,

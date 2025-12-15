@@ -121,17 +121,11 @@ const CounselChat: React.FC<CounselChatProps> = ({ history, mode, speaker1Name, 
           {messages.map((m) => (
             <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
               <div
-                className={m.role === 'user' ? 'max-w-[92%] md:max-w-[78%] itda-alert' : 'max-w-[92%] md:max-w-[78%] itda-alert'}
-                style={{
-                  background:
-                    m.role === 'user'
-                      ? 'rgba(126, 162, 200, 0.14)'
-                      : 'rgba(197, 139, 215, 0.12)',
-                  borderColor:
-                    m.role === 'user'
-                      ? 'rgba(126, 162, 200, 0.22)'
-                      : 'rgba(197, 139, 215, 0.22)',
-                }}
+                className={
+                  m.role === 'user'
+                    ? 'max-w-[92%] md:max-w-[78%] itda-alert itda-chat-bubble itda-chat-bubble-user'
+                    : 'max-w-[92%] md:max-w-[78%] itda-alert itda-chat-bubble itda-chat-bubble-assistant'
+                }
               >
                 <div className="text-sm whitespace-pre-line text-gray-800">{m.content}</div>
               </div>

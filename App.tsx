@@ -7,9 +7,10 @@ import LandingPage from './components/LandingPage';
 import RelationshipMap from './components/RelationshipMap';
 import SelfAnalysis from './components/SelfAnalysis';
 
-import { HeartIcon, RelationshipNodesIcon, SparklesIcon, ArrowLeftIcon, PlusIcon, UserIcon } from './components/icons';
+import { HeartIcon, RelationshipNodesIcon, SparklesIcon, ArrowLeftIcon, PlusIcon, UserIcon, SunIcon, MoonIcon } from './components/icons';
 import { useLanguage } from './contexts/LanguageContext';
 import { useAuth } from './contexts/AuthContext';
+import { useTheme } from './contexts/ThemeContext';
 import ChatInputForm from './components/ChatInputForm';
 import CounselChat from './components/CounselChat';
 
@@ -29,6 +30,7 @@ const fileToGenerativePart = async (file: File) => {
 
 const App: React.FC = () => {
   const { currentUser, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [view, setView] = useState<View>('landing');
   const [analyses, setAnalyses] = useState<StoredAnalysis[]>([]);
   const [currentAnalysis, setCurrentAnalysis] = useState<StoredAnalysis | null>(null);
@@ -557,12 +559,25 @@ const App: React.FC = () => {
         <header className="itda-topbar itda-surface">
           <div className="flex items-center gap-3">
             <button
+              onClick={toggleTheme}
+              className="itda-btn itda-btn-secondary px-3 py-2 text-sm smooth-transition"
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            >
+              {theme === 'dark' ? (
+                <SunIcon className="w-5 h-5" />
+              ) : (
+                <MoonIcon className="w-5 h-5" />
+              )}
+            </button>
+            <button
               onClick={toggleLanguage}
               className="itda-btn itda-btn-secondary px-4 py-2 text-sm smooth-transition"
             >
-              {language === 'ko' ? 'EN' : '한국어'}
+              {language === 'ko' ? 'EN' : 'KO'}
             </button>
           </div>
+
           <div className="flex items-center gap-3">
             <div className="itda-btn itda-btn-secondary px-4 py-2 text-sm">
               {currentUser?.email || currentUser?.displayName || t('user')}
