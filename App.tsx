@@ -341,12 +341,6 @@ const App: React.FC = () => {
           }}>
             <RelationshipMap
               analyses={analyses}
-              onAdd={(name, mode) => {
-                // When adding from RelationshipMap modal, create a NEW person
-                setIsCreatingNewPerson(true);
-                setPrefilledData({ name, mode });
-                setView('input');
-              }}
               onSelect={handleSelectAnalysis}
               onDelete={handleDeleteAnalysis}
               onBack={() => setView('landing')}
@@ -440,11 +434,11 @@ const App: React.FC = () => {
             </div>
 
             {dashboardTab === 'analysis' ? (
-              <AnalysisDashboard
-                result={currentAnalysis.result}
-                mode={currentAnalysis.mode}
-                chatHistory={currentHistory}
-              />
+            <AnalysisDashboard
+              result={currentAnalysis.result}
+              mode={currentAnalysis.mode}
+              chatHistory={currentHistory}
+            />
             ) : (
               <CounselChat
                 history={currentHistory}

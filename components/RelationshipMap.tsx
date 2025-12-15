@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { StoredAnalysis, RelationshipMode } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -6,7 +6,6 @@ import { PlusIcon, ArrowLeftIcon } from './icons';
 
 interface RelationshipMapProps {
   analyses: StoredAnalysis[];
-  onAdd: (name: string, mode: RelationshipMode) => void; // Called when modal confirms new person - creates NEW person
   onSelect: (analysis: StoredAnalysis) => void;
   onDelete?: (analysis: StoredAnalysis) => void;
   onBack: () => void;
@@ -14,66 +13,7 @@ interface RelationshipMapProps {
   showBackButton?: boolean;
 }
 
-const AddPersonModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onAdd: (name: string, mode: RelationshipMode) => void;
-}> = ({ isOpen, onClose, onAdd }) => {
-    const { t } = useLanguage();
-    const [name, setName] = useState('');
-    const [mode, setMode] = useState<RelationshipMode>(RelationshipMode.FRIEND);
-
-    if (!isOpen) return null;
-
-    const handleSubmit = () => {
-        if (name.trim()) {
-            onAdd(name, mode);
-            setName('');
-            setMode(RelationshipMode.FRIEND);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 fade-in" onClick={onClose}>
-            <div className="itda-surface p-8 w-full max-w-md m-4" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-2xl font-bold text-gray-800 mb-6">{t('addPersonModalTitle')}</h3>
-                <div className="space-y-4">
-                    <div>
-                        <label htmlFor="person-name" className="block text-sm font-bold text-gray-700 mb-1">{t('nameLabel')}</label>
-                        <input
-                            id="person-name"
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            // FIX: Replaced invalid translation key 'speaker2Name' with 'namePlaceholder'.
-                            placeholder={t('namePlaceholder')}
-                            className="itda-field smooth-transition"
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="relationship-type" className="block text-sm font-bold text-gray-700 mb-1">{t('relationshipTypeLabel')}</label>
-                        <select
-                            id="relationship-type"
-                            value={mode}
-                            onChange={(e) => setMode(e.target.value as RelationshipMode)}
-                            className="itda-field smooth-transition"
-                        >
-                            {Object.values(RelationshipMode).map((m) => (
-                                <option key={m} value={m}>{t(m as any)}</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-                <div className="flex justify-end gap-4 mt-8">
-                    <button onClick={onClose} className="itda-btn itda-btn-secondary px-6 py-2 smooth-transition">{t('cancelButton')}</button>
-                    <button onClick={handleSubmit} disabled={!name.trim()} className="itda-btn itda-btn-primary px-6 py-2 smooth-transition disabled:opacity-50 disabled:cursor-not-allowed">{t('addButton')}</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onAdd, onSelect, onDelete, onBack, embedded = false, showBackButton = true }) => {
+const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onSelect, onDelete, onBack, embedded = false, showBackButton = true }) => {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -138,11 +78,6 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onAdd, onSe
     }
     return acc;
   }, {} as { [key in RelationshipMode]?: StoredAnalysis[] });
-
-  const handleAddPerson = (name: string, mode: RelationshipMode) => {
-    onAdd(name, mode);
-    setIsModalOpen(false);
-  };
 
   const handleDeletePerson = (analysis: StoredAnalysis) => {
     if (!onDelete) return;
@@ -492,20 +427,6 @@ const RelationshipMap: React.FC<RelationshipMapProps> = ({ analyses, onAdd, onSe
                 {t('backToHome')}
             </button>
         )}
-
-        <button
-            onClick={() => setIsModalOpen(true)}
-            className="absolute bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-lg flex items-center justify-center smooth-transition hover:scale-110 hover:shadow-xl focus:outline-none"
-            aria-label={t('addPerson')}
-        >
-            <PlusIcon className="w-8 h-8" />
-        </button>
-
-        <AddPersonModal 
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            onAdd={handleAddPerson}
-        />
     </div>
   );
 };
