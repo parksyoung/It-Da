@@ -107,7 +107,7 @@ const analysisSchema = {
     },
     suggestedTopics: {
       type: Type.ARRAY,
-      description: 'An array of 3-4 conversation topics that naturally flow at the current relationship stage. Each topic should be a short, engaging phrase suitable for the relationship type (romance/friend/work). Topics should be based on the actual conversation content and relationship dynamics.',
+      description: 'An array of 3-4 conversation topics that naturally flow at the current relationship stage. Each topic should be a short, engaging phrase (not a full sentence) that fits the relationship type. For romance mode, suggest topics that help deepen the relationship. For friend mode, suggest casual, friendly topics. For work mode, suggest professional but warm topics. Topics should be based on the actual conversation content and relationship dynamics.',
       items: { type: Type.STRING }
     }
   },
@@ -117,11 +117,6 @@ const analysisSchema = {
 
 /**
  * Analyzes a conversation history string and returns analysis results.
- * This function takes the entire conversation history (accumulated conversations) as input.
- * @param historyString - The complete conversation history as a string
- * @param mode - The relationship mode (WORK, ROMANCE, FRIEND, OTHER)
- * @param language - The language for the output ('ko' or 'en')
- * @returns Promise<AnalysisResult> - The analysis results
  */
 export const analyzeConversation = async (historyString: string, mode: RelationshipMode, language: 'ko' | 'en'): Promise<AnalysisResult> => {
   const prompt = `
@@ -177,8 +172,6 @@ export const analyzeConversation = async (historyString: string, mode: Relations
 
 /**
  * Legacy function for backward compatibility.
- * Analyzes a single chat text (not accumulated history).
- * @deprecated Use analyzeConversation instead for accumulated history analysis.
  */
 export const analyzeChat = async (chatText: string, mode: RelationshipMode, language: 'ko' | 'en'): Promise<AnalysisResult> => {
   return analyzeConversation(chatText, mode, language);
@@ -223,6 +216,7 @@ ${JSON.stringify(source)}
   }
 };
 
+// ⭐ 여기! counselConversation 함수가 RAG API를 사용하도록 변경됨
 export const counselConversation = async (
   historyString: string,
   userQuestion: string,
@@ -236,40 +230,23 @@ export const counselConversation = async (
     throw new Error(language === 'ko' ? '질문을 입력해주세요.' : 'Please enter a question.');
   }
 
-  const maxChars = 16000;
-  const safeHistory = (historyString || '').slice(-maxChars);
-
-  const prompt = `
-You are 'It-Da', a warm, practical relationship counseling assistant.
-
-IMPORTANT:
-- Answer in ${language === 'ko' ? 'Korean' : 'English'}.
-- Be empathetic but concrete: give step-by-step suggestions, example messages, and what to avoid.
-- Use the conversation history as context, but do not hallucinate facts not present.
-- If the user asks for harmful/illegal actions, refuse and offer safer alternatives.
-
-Context:
-- Relationship Mode: ${mode}
-- Speaker 1: ${speaker1Name || 'User'}
-- Speaker 2: ${speaker2Name || 'Partner'}
-
-Conversation history (may contain multiple sessions over time):
----
-${safeHistory}
----
-
-User question:
-${trimmedQuestion}
-`;
-
   try {
-    const ai = getAi();
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
+    // 🚀 수정된 부분: Gemini를 직접 부르지 않고, 우리가 만든 API 서버로 요청을 보냄
+    const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: trimmedQuestion }),
     });
 
-    return response.text.trim();
+    if (!response.ok) {
+        throw new Error(`API Error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.reply; // API에서 받은 답변 반환
+
   } catch (error) {
     console.error('Error counseling conversation:', error);
     throw new Error(language === 'ko' ? '상담 답변 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' : 'Failed to generate an answer. Please try again later.');
@@ -386,16 +363,6 @@ const selfAnalysisSchema = {
 
 /**
  * Analyzes the user's own conversation style across all their conversations
- * 
- * IMPORTANT: This function is separate from analyzeConversation().
- * - analyzeConversation: Analyzes relationship between two people
- * - analyzeSelfConversation: Analyzes user's own communication style
- * 
- * These functions do NOT share logic or state.
- * 
- * @param allConversations - Combined conversation history from all relationships
- * @param language - The language for any descriptive text ('ko' or 'en')
- * @returns Promise with 4-axis scores (0-100 each)
  */
 export const analyzeSelfConversation = async (
   allConversations: string,
@@ -411,24 +378,24 @@ export const analyzeSelfConversation = async (
     Analyze the following 4 axes:
 
     1. **Initiative (주도성)**: How often does the user initiate conversations vs. responding?
-       - 0-49: Responder (답장러) - User mostly responds to others' messages
-       - 50-100: Initiator (선톡러) - User frequently starts conversations
-       - Calculation: Ratio of conversations/messages where the user sends the first message in a conversation thread
+        - 0-49: Responder (답장러) - User mostly responds to others' messages
+        - 50-100: Initiator (선톡러) - User frequently starts conversations
+        - Calculation: Ratio of conversations/messages where the user sends the first message in a conversation thread
 
     2. **Emotion (감성도)**: Does the user express feelings/empathy or focus on problem-solving?
-       - 0-49: Thinking/Problem-solving (해결형) - User focuses on solutions, facts, logic
-       - 50-100: Feeling/Empathetic (공감형) - User expresses emotions, uses empathetic language, emojis like ㅠㅠ, ㅋㅋ, 감탄사
-       - Calculation: Consider positive/negative word ratios, emoji usage frequency, emotional expressions, empathetic phrases
+        - 0-49: Thinking/Problem-solving (해결형) - User focuses on solutions, facts, logic
+        - 50-100: Feeling/Empathetic (공감형) - User expresses emotions, uses empathetic language, emojis like ㅠㅠ, ㅋㅋ, 감탄사
+        - Calculation: Consider positive/negative word ratios, emoji usage frequency, emotional expressions, empathetic phrases
 
     3. **Expression Style (표현 방식)**: Does the user prefer text or emoji/emoticons?
-       - 0-49: Text-oriented (텍스트파) - Longer messages, fewer emojis/emoticons
-       - 50-100: Emoji-oriented (이모지파) - Frequent use of emojis, emoticons, shorter messages
-       - Calculation: Average message length, emoji/emoticon usage ratio per message
+        - 0-49: Text-oriented (텍스트파) - Longer messages, fewer emojis/emoticons
+        - 50-100: Emoji-oriented (이모지파) - Frequent use of emojis, emoticons, shorter messages
+        - Calculation: Average message length, emoji/emoticon usage ratio per message
 
     4. **Tempo (속도)**: How quickly does the user respond?
-       - 0-49: Slow response (느긋) - Takes time to respond, longer gaps
-       - 50-100: Fast response (칼답) - Quick responses, short gaps between messages
-       - Calculation: Average response time in minutes (if timestamps available), or message frequency
+        - 0-49: Slow response (느긋) - Takes time to respond, longer gaps
+        - 50-100: Fast response (칼답) - Quick responses, short gaps between messages
+        - Calculation: Average response time in minutes (if timestamps available), or message frequency
 
     Analyze the combined conversation history and provide scores for each axis (0-100).
 

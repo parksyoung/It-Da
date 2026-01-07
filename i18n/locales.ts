@@ -220,7 +220,6 @@ export const translations = {
     loggedInAs: '{name}으로 로그인됨',
     
     // Self Analysis
-    selfAnalysisTitle: '자기 분석',
     selfAnalysisDescription: '당신의 대화 스타일을 4가지 축으로 분석합니다',
     initiativeAxis: '주도성',
     initiativeLeader: '내가 이끄는 리더',
@@ -467,7 +466,6 @@ export const translations = {
     loggedInAs: 'Logged in as {name}',
     
     // Self Analysis
-    selfAnalysisTitle: 'Self Analysis',
     selfAnalysisDescription: 'Analyze your conversation style across 4 axes',
     initiativeAxis: 'Initiative',
     initiativeLeader: 'Leader who takes charge',
