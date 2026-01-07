@@ -1,11 +1,10 @@
 import { Pinecone } from '@pinecone-database/pinecone';
-import { GoogleGenerativeAI } from '@google/generative-ai'; // 구글 가져오기
-import OpenAI from 'openai'; // OpenAI 가져오기
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 
-// 환경변수 3개 다 필요해!
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY; // 구글 키도 다시 사용!
+const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -13,55 +12,63 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message } = req.body;
+    // 1️⃣ [순서 중요] 가장 먼저 프론트엔드에서 보낸 데이터를 받습니다.
+    // 여기서 conversationContext가 정의됩니다.
+    const { message, conversationContext } = req.body;
+
+    // 🕵️‍♂️ 데이터 확인용 로그 (터미널에서 확인)
+    console.log("📨 프론트에서 받은 대화 길이:", conversationContext ? conversationContext.length : 0);
 
     if (!PINECONE_API_KEY || !OPENAI_API_KEY || !GEMINI_API_KEY) {
-      throw new Error('API Keys are missing (Pinecone, OpenAI, or Gemini)');
+      throw new Error('API Keys are missing');
     }
 
-    // 1. 설정 (하이브리드!)
     const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY });
     const index = pinecone.index('hci-project-rag');
     
-    // 임베딩(검색용 숫자 변환)은 구글한테 맡김 (DB랑 규격 맞추기 위해)
+    // 임베딩 (Google)
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-
-    // 대답(채팅)은 OpenAI한테 맡김 (똑똑하고 안정적이니까)
+    
+    // 채팅 (OpenAI)
     const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-    // 2. 구글 모델로 질문을 768차원 숫자로 변환
+    // 2️⃣ 사용자의 질문(message)을 임베딩합니다.
     const embeddingResult = await embeddingModel.embedContent(message);
     const vector = embeddingResult.embedding.values;
 
-    // 3. Pinecone 검색 (이제 규격이 맞아서 에러 안 남!)
+    // 3️⃣ Pinecone에서 관련된 심리학 정보를 찾습니다.
     const queryResponse = await index.query({
       vector: vector,
       topK: 3,
       includeMetadata: true,
     });
 
-    const contextText = queryResponse.matches
+    // 4️⃣ [순서 중요] 여기서 psychologyContext가 정의됩니다.
+    const psychologyContext = queryResponse.matches
       .map((match) => match.metadata?.text || '')
       .join('\n\n');
 
-    console.log('🌲 Pinecone에서 찾아낸 내용:', contextText);
+    console.log('🌲 Pinecone 검색 완료');
 
-    // 4. GPT에게 줄 프롬프트
+    // 5️⃣ [순서 중요] 위에서 모든 재료(변수)가 준비된 후에 systemPrompt를 만듭니다.
+    // 이제 빨간 줄이 안 뜰 겁니다!
     const systemPrompt = `
-      당신은 'It-Da' 서비스의 AI 상담사입니다.
-      아래 [관련 정보]를 바탕으로 사용자 질문에 답변하세요.
+      당신은 'It-Da' 서비스의 AI 연애/관계 상담사입니다.
       
-      규칙:
-      1. 제공된 심리학/인간관계론 정보를 자연스럽게 인용하여 조언하세요.
-      2. 따뜻하고 공감하는 말투를 사용하세요.
-      3. 정보가 없으면 일반적인 공감과 함께 솔직하게 답변하세요.
+      [필수 지시사항]
+      1. 아래 제공된 [사용자가 업로드한 대화 내용]을 '사실(Fact)'로 받아들이고 분석하세요.
+      2. 답변할 때 **업로드된 대화 내용 중 특정 단어, 문장, 말투를 반드시 인용**하여 근거를 대세요.
+      3. 사용자의 고민에 대해 [심리학/인간관계론 정보]를 연결하여 실질적인 조언을 해주세요.
+      4. 절대 "대화 내용이 부족하다"거나 "업로드해주세요"라는 말을 하지 마세요. 있는 정보 내에서 최대한 답변하세요.
+      [사용자가 업로드한 대화 내용 (Context)]:
+      ${conversationContext && conversationContext.length > 0 ? conversationContext : "없음 (이 경우 사용자에게 대화 파일이 없다고 말할 것)"}
 
-      [관련 정보]:
-      ${contextText}
+      [심리학/인간관계론 정보 (RAG 검색 결과)]:
+      ${psychologyContext}
     `;
 
-    // 5. GPT-4o-mini가 답변 생성
+    // 6️⃣ GPT에게 최종 질문 던지기
     const completion = await openai.chat.completions.create({
       messages: [
         { role: "system", content: systemPrompt },
