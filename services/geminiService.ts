@@ -175,22 +175,52 @@ Rules:
 - Do NOT translate proper names (e.g., speaker names) or identifiers.
 - Translate all user-facing text fields: summary, recommendation, suggestedReplies, attentionPoints, suggestedTopics.
 
+**CRITICAL: You MUST respond with ONLY valid JSON, no additional text before or after.**
+
+You must return a JSON object with the following exact structure:
+{
+  "intimacyScore": <number 0-100>,
+  "balanceRatio": {
+    "speaker1": { "name": "<string>", "percentage": <number> },
+    "speaker2": { "name": "<string>", "percentage": <number> }
+  },
+  "sentiment": {
+    "positive": <number>,
+    "negative": <number>,
+    "neutral": <number>
+  },
+  "avgResponseTime": {
+    "speaker1": { "name": "<string>", "time": <number | null> },
+    "speaker2": { "name": "<string>", "time": <number | null> }
+  },
+  "summary": "<string>",
+  "recommendation": "<string>",
+  "sentimentFlow": [
+    { "time_percentage": <number 0-100>, "sentiment_score": <number -1 to 1> },
+    ... (exactly 20 data points)
+  ],
+  "responseHeatmap": [<number>, ...] (exactly 24 numbers, one for each hour 0-23),
+  "suggestedReplies": ["<string>", ...] (2-3 items),
+  "attentionPoints": ["<string>", ...] (2-3 items),
+  "suggestedTopics": ["<string>", ...] (3-4 items)
+}
+
 Input JSON:
 ${JSON.stringify(source)}
 `;
 
   try {
-    const ai = getAi();
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: analysisSchema,
-      },
-    });
-
-    const jsonString = response.text.trim();
+    const responseText = await callLuxiaAPI(prompt);
+    
+    // JSON 파싱 시도 (마크다운 코드 블록 제거)
+    let jsonString = responseText.trim();
+    // JSON 코드 블록이 있는 경우 제거
+    if (jsonString.startsWith('```json')) {
+      jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (jsonString.startsWith('```')) {
+      jsonString = jsonString.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
     return JSON.parse(jsonString) as AnalysisResult;
   } catch (error) {
     console.error('Error translating analysis result:', error);
@@ -198,7 +228,6 @@ ${JSON.stringify(source)}
   }
 };
 
-// ⭐ 여기! counselConversation 함수가 RAG API를 사용하도록 변경됨
 export const counselConversation = async (
   historyString: string,
   userQuestion: string,
@@ -211,6 +240,32 @@ export const counselConversation = async (
   if (!trimmedQuestion) {
     throw new Error(language === 'ko' ? '질문을 입력해주세요.' : 'Please enter a question.');
   }
+
+  const maxChars = 16000;
+  const safeHistory = (historyString || '').slice(-maxChars);
+
+  const prompt = `
+You are 'It-Da', a warm, practical relationship counseling assistant.
+
+IMPORTANT:
+- Answer in ${language === 'ko' ? 'Korean' : 'English'}.
+- Be empathetic but concrete: give step-by-step suggestions, example messages, and what to avoid.
+- Use the conversation history as context, but do not hallucinate facts not present.
+- If the user asks for harmful/illegal actions, refuse and offer safer alternatives.
+
+Context:
+- Relationship Mode: ${mode}
+- Speaker 1: ${speaker1Name || 'User'}
+- Speaker 2: ${speaker2Name || 'Partner'}
+
+Conversation history (may contain multiple sessions over time):
+---
+${safeHistory}
+---
+
+User question:
+${trimmedQuestion}
+`;
 
   try {
     const responseText = await callLuxiaAPI(prompt);
