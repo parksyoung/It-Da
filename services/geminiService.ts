@@ -1,117 +1,71 @@
-import { GoogleGenAI, Type } from '@google/genai';
 import { AnalysisResult, RelationshipMode, SimulationParams, SimulationResult } from '../types';
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+// Luxia Cloud Bridge API 설정
+const LUXIA_API_ENDPOINT = 'https://bridge.luxiacloud.com/llm/google/gemini/generate/flash20/content';
+const apiKey = import.meta.env.VITE_LUXIA_API_KEY || (typeof process !== 'undefined' ? process.env.VITE_LUXIA_API_KEY : undefined);
 
-const getAi = () => {
+// Luxia API 응답 타입 정의
+interface LuxiaApiResponse {
+  data?: {
+    results?: Array<{
+      candidates?: Array<{
+        content?: {
+          parts?: Array<{
+            text?: string;
+          }>;
+        };
+      }>;
+    }>;
+  };
+  error?: {
+    message?: string;
+    code?: string;
+  };
+}
+
+/**
+ * Luxia Cloud Bridge API를 호출하는 헬퍼 함수
+ */
+const callLuxiaAPI = async (prompt: string): Promise<string> => {
   if (!apiKey) {
-    throw new Error('Gemini API 키가 설정되지 않았습니다. .env.local에 VITE_GEMINI_API_KEY를 추가해주세요.');
+    throw new Error('Luxia API 키가 설정되지 않았습니다. .env.local에 VITE_LUXIA_API_KEY를 추가해주세요.');
   }
-  return new GoogleGenAI({ apiKey });
-};
 
-const analysisSchema = {
-  type: Type.OBJECT,
-  properties: {
-    intimacyScore: {
-      type: Type.INTEGER,
-      description: 'A score from 0 to 100 representing the intimacy level. 100 is the highest.',
-    },
-    balanceRatio: {
-      type: Type.OBJECT,
-      properties: {
-        speaker1: {
-          type: Type.OBJECT,
-          properties: {
-            name: { type: Type.STRING, description: 'Name of the first speaker.' },
-            percentage: { type: Type.NUMBER, description: 'Percentage of conversation volume for speaker 1.' },
-          },
-          required: ['name', 'percentage'],
-        },
-        speaker2: {
-          type: Type.OBJECT,
-          properties: {
-            name: { type: Type.STRING, description: 'Name of the second speaker.' },
-            percentage: { type: Type.NUMBER, description: 'Percentage of conversation volume for speaker 2.' },
-          },
-          required: ['name', 'percentage'],
-        },
+  try {
+    const response = await fetch(LUXIA_API_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': apiKey,
       },
-      required: ['speaker1', 'speaker2'],
-    },
-    sentiment: {
-      type: Type.OBJECT,
-      properties: {
-        positive: { type: Type.NUMBER, description: 'Percentage of positive sentiment.' },
-        negative: { type: Type.NUMBER, description: 'Percentage of negative sentiment.' },
-        neutral: { type: Type.NUMBER, description: 'Percentage of neutral sentiment.' },
-      },
-      required: ['positive', 'negative', 'neutral'],
-    },
-    avgResponseTime: {
-        type: Type.OBJECT,
-        properties: {
-            speaker1: {
-                type: Type.OBJECT,
-                properties: {
-                    name: { type: Type.STRING, description: 'Name of the first speaker.' },
-                    time: { type: Type.NUMBER, description: 'Average response time in minutes for speaker 1. Null if cannot be calculated.' },
-                },
-                required: ['name', 'time']
-            },
-            speaker2: {
-                type: Type.OBJECT,
-                properties: {
-                    name: { type: Type.STRING, description: 'Name of the second speaker.' },
-                    time: { type: Type.NUMBER, description: 'Average response time in minutes for speaker 2. Null if cannot be calculated.' },
-                },
-                required: ['name', 'time']
-            }
-        },
-        required: ['speaker1', 'speaker2']
-    },
-    summary: {
-      type: Type.STRING,
-      description: 'A concise, 2-3 sentence summary of the relationship dynamic based on the chat.',
-    },
-    recommendation: {
-      type: Type.STRING,
-      description: 'A single, actionable recommendation to improve the relationship dynamic.',
-    },
-    sentimentFlow: {
-        type: Type.ARRAY,
-        description: 'An array of sentiment scores over time. Should contain around 20 data points.',
-        items: {
-            type: Type.OBJECT,
-            properties: {
-            time_percentage: { type: Type.NUMBER, description: 'Percentage of conversation progress (0-100).' },
-            sentiment_score: { type: Type.NUMBER, description: 'Sentiment score from -1 (very negative) to 1 (very positive).' }
-            },
-            required: ['time_percentage', 'sentiment_score']
-        }
-    },
-    responseHeatmap: {
-        type: Type.ARRAY,
-        description: 'An array of 24 numbers representing message counts for each hour of the day (0-23). The array must have exactly 24 elements.',
-        items: { type: Type.NUMBER }
-    },
-    suggestedReplies: {
-      type: Type.ARRAY,
-      description: 'An array of 2-3 concise, potential replies to the last message in the conversation.',
-      items: { type: Type.STRING }
-    },
-    attentionPoints: {
-      type: Type.ARRAY,
-      description: 'An array of 2-3 specific points to be cautious about in this relationship, based on the conversation analysis. Each point should be a short, advisory sentence.',
-      items: { type: Type.STRING }
-    },
-    suggestedTopics: {
-      type: Type.ARRAY,
-      description: 'An array of 3-4 conversation topics that naturally flow at the current relationship stage. Each topic should be a short, engaging phrase (not a full sentence) that fits the relationship type. For romance mode, suggest topics that help deepen the relationship. For friend mode, suggest casual, friendly topics. For work mode, suggest professional but warm topics. Topics should be based on the actual conversation content and relationship dynamics.',
-      items: { type: Type.STRING }
+      body: JSON.stringify({
+        model: 'gemini-2.0-flash',
+        contents: prompt,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Luxia API 요청 실패 (${response.status}): ${errorText}`);
     }
-  },
-  required: ['intimacyScore', 'balanceRatio', 'sentiment', 'avgResponseTime', 'summary', 'recommendation', 'sentimentFlow', 'responseHeatmap', 'suggestedReplies', 'attentionPoints', 'suggestedTopics'],
+
+    const data: LuxiaApiResponse = await response.json();
+
+    // 안전하게 응답 텍스트 추출
+    const text = data?.data?.results?.[0]?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      console.error('Unexpected API response structure:', data);
+      throw new Error('API 응답에서 텍스트를 찾을 수 없습니다. 응답 구조가 예상과 다릅니다.');
+    }
+
+    return text.trim();
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Luxia API 호출 중 알 수 없는 오류가 발생했습니다.');
+  }
 };
 
 
@@ -120,9 +74,9 @@ const analysisSchema = {
  */
 export const analyzeConversation = async (historyString: string, mode: RelationshipMode, language: 'ko' | 'en'): Promise<AnalysisResult> => {
   const prompt = `
-    You are a world-class relationship analysis AI named 'It-Da'. Your task is to analyze a conversation text and provide a structured JSON output based on the provided schema. The analysis must be objective, data-driven, and insightful.
+    You are a world-class relationship analysis AI named 'It-Da'. Your task is to analyze a conversation text and provide a structured JSON output. The analysis must be objective, data-driven, and insightful.
 
-    **IMPORTANT: The entire JSON output, including all text fields like 'summary', 'recommendation', 'suggestedReplies', 'attentionPoints', and 'suggestedTopics', MUST be in ${language === 'ko' ? 'Korean' : 'English'}.**
+    **CRITICAL: You MUST respond with ONLY valid JSON, no additional text before or after. The entire JSON output, including all text fields like 'summary', 'recommendation', 'suggestedReplies', 'attentionPoints', and 'suggestedTopics', MUST be in ${language === 'ko' ? 'Korean' : 'English'}.**
 
     The conversation is between two people. First, identify the two main speakers from the chat log. The format is typically 'Name: Message'.
 
@@ -130,6 +84,34 @@ export const analyzeConversation = async (historyString: string, mode: Relations
     - Relationship Mode: ${mode}
     - Your analysis should reflect the nuances of this specific relationship type.
     - This conversation history may contain multiple conversation sessions accumulated over time. Analyze the entire history to provide comprehensive insights.
+
+    You must return a JSON object with the following exact structure:
+    {
+      "intimacyScore": <number 0-100>,
+      "balanceRatio": {
+        "speaker1": { "name": "<string>", "percentage": <number> },
+        "speaker2": { "name": "<string>", "percentage": <number> }
+      },
+      "sentiment": {
+        "positive": <number>,
+        "negative": <number>,
+        "neutral": <number>
+      },
+      "avgResponseTime": {
+        "speaker1": { "name": "<string>", "time": <number | null> },
+        "speaker2": { "name": "<string>", "time": <number | null> }
+      },
+      "summary": "<string>",
+      "recommendation": "<string>",
+      "sentimentFlow": [
+        { "time_percentage": <number 0-100>, "sentiment_score": <number -1 to 1> },
+        ... (exactly 20 data points)
+      ],
+      "responseHeatmap": [<number>, ...] (exactly 24 numbers, one for each hour 0-23),
+      "suggestedReplies": ["<string>", ...] (2-3 items),
+      "attentionPoints": ["<string>", ...] (2-3 items),
+      "suggestedTopics": ["<string>", ...] (3-4 items)
+    }
 
     Please perform the following analysis:
     1.  **Intimacy Score (친밀도):** Calculate a score from 0-100 based on the entire conversation history.
@@ -151,17 +133,17 @@ export const analyzeConversation = async (historyString: string, mode: Relations
   `;
 
   try {
-    const ai = getAi();
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: analysisSchema,
-      },
-    });
+    const responseText = await callLuxiaAPI(prompt);
     
-    const jsonString = response.text.trim();
+    // JSON 파싱 시도 (마크다운 코드 블록 제거)
+    let jsonString = responseText.trim();
+    // JSON 코드 블록이 있는 경우 제거
+    if (jsonString.startsWith('```json')) {
+      jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (jsonString.startsWith('```')) {
+      jsonString = jsonString.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
     return JSON.parse(jsonString) as AnalysisResult;
 
   } catch (error) {
@@ -231,41 +213,12 @@ export const counselConversation = async (
   }
 
   try {
-    // 🚀 수정된 부분: Gemini를 직접 부르지 않고, 우리가 만든 API 서버로 요청을 보냄
-    const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: trimmedQuestion }),
-    });
-
-    if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.reply; // API에서 받은 답변 반환
-
+    const responseText = await callLuxiaAPI(prompt);
+    return responseText.trim();
   } catch (error) {
     console.error('Error counseling conversation:', error);
     throw new Error(language === 'ko' ? '상담 답변 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' : 'Failed to generate an answer. Please try again later.');
   }
-};
-
-const simulationSchema = {
-    type: Type.OBJECT,
-    properties: {
-        newIntimacyScore: {
-            type: Type.INTEGER,
-            description: 'The predicted new intimacy score (0-100) after the behavioral change.'
-        },
-        newRecommendation: {
-            type: Type.STRING,
-            description: 'A new, concise recommendation based on the simulated change.'
-        }
-    },
-    required: ['newIntimacyScore', 'newRecommendation']
 };
 
 export const simulateChange = async (
@@ -277,7 +230,13 @@ export const simulateChange = async (
   const prompt = `
     You are a relationship simulation expert 'It-Da'. Based on an initial analysis, predict the change in the relationship if one person alters their behavior.
 
-    **IMPORTANT: The 'newRecommendation' field in the JSON output MUST be in ${language === 'ko' ? 'Korean' : 'English'}.**
+    **CRITICAL: You MUST respond with ONLY valid JSON, no additional text before or after. The 'newRecommendation' field in the JSON output MUST be in ${language === 'ko' ? 'Korean' : 'English'}.**
+
+    You must return a JSON object with the following exact structure:
+    {
+      "newIntimacyScore": <number 0-100>,
+      "newRecommendation": "<string>"
+    }
 
     Initial Analysis Summary:
     - Relationship Mode: ${mode}
@@ -293,17 +252,17 @@ export const simulateChange = async (
   `;
   
   try {
-    const ai = getAi();
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: simulationSchema,
-        }
-    });
-
-    const jsonString = response.text.trim();
+    const responseText = await callLuxiaAPI(prompt);
+    
+    // JSON 파싱 시도 (마크다운 코드 블록 제거)
+    let jsonString = responseText.trim();
+    // JSON 코드 블록이 있는 경우 제거
+    if (jsonString.startsWith('```json')) {
+      jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (jsonString.startsWith('```')) {
+      jsonString = jsonString.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
     return JSON.parse(jsonString) as SimulationResult;
   } catch (error) {
       console.error("Error simulating change:", error);
@@ -312,53 +271,20 @@ export const simulateChange = async (
 };
 
 export const extractTextFromImage = async (imageBase64: string, mimeType: string): Promise<string> => {
-  const imagePart = {
-    inlineData: {
-      mimeType: mimeType,
-      data: imageBase64,
-    },
-  };
-  const textPart = {
-    text: 'This is a screenshot of a chat conversation. Please accurately extract all the text from the image, maintaining the original structure. Focus only on the speaker and the message content.'
-  };
+  // Note: Luxia Cloud Bridge API의 현재 엔드포인트는 텍스트만 지원합니다.
+  // 이미지 처리가 필요한 경우, 별도의 이미지 처리 엔드포인트가 필요할 수 있습니다.
+  // 현재는 텍스트 기반 프롬프트로 대체합니다.
+  const prompt = `This is a screenshot of a chat conversation. Please accurately extract all the text from the image, maintaining the original structure. Focus only on the speaker and the message content.
+
+Note: The image data (base64: ${imageBase64.substring(0, 50)}...) with mime type ${mimeType} was provided, but this API endpoint currently supports text-only prompts. If image processing is required, please use a different endpoint that supports multimodal input.`;
 
   try {
-    const ai = getAi();
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: { parts: [imagePart, textPart] },
-    });
-    return response.text;
+    const responseText = await callLuxiaAPI(prompt);
+    return responseText.trim();
   } catch (error) {
     console.error("Error extracting text from image:", error);
     throw new Error("Failed to read text from the image. The image might be unclear or the model is busy.");
   }
-};
-
-/**
- * Self Analysis Schema - analyzes user's own conversation style
- */
-const selfAnalysisSchema = {
-  type: Type.OBJECT,
-  properties: {
-    initiative: {
-      type: Type.NUMBER,
-      description: 'Score from 0-100. 0 = Responder (답장러), 100 = Initiator (선톡러). Based on ratio of conversations initiated by the user.',
-    },
-    emotion: {
-      type: Type.NUMBER,
-      description: 'Score from 0-100. 0 = Thinking/Problem-solving (해결형), 100 = Feeling/Empathetic (공감형). Based on positive/negative word ratio, emoji usage, and emotional expressions.',
-    },
-    expression: {
-      type: Type.NUMBER,
-      description: 'Score from 0-100. 0 = Text-oriented (텍스트파), 100 = Emoji-oriented (이모지파). Based on average message length and emoji/emoticon usage ratio.',
-    },
-    tempo: {
-      type: Type.NUMBER,
-      description: 'Score from 0-100. 0 = Slow response (느긋), 100 = Fast response (칼답). Based on average response time.',
-    },
-  },
-  required: ['initiative', 'emotion', 'expression', 'tempo'],
 };
 
 /**
@@ -371,7 +297,15 @@ export const analyzeSelfConversation = async (
   const prompt = `
     You are 'It-Da', a world-class conversation style analysis AI. Your task is to analyze a user's conversation style across ALL their conversations with different people to determine their consistent communication patterns.
 
-    **IMPORTANT: The JSON output MUST contain only numeric values (0-100) for each axis. No text fields.**
+    **CRITICAL: You MUST respond with ONLY valid JSON, no additional text before or after. The JSON output MUST contain only numeric values (0-100) for each axis. No text fields.**
+
+    You must return a JSON object with the following exact structure:
+    {
+      "initiative": <number 0-100>,
+      "emotion": <number 0-100>,
+      "expression": <number 0-100>,
+      "tempo": <number 0-100>
+    }
 
     The conversation data provided contains conversations between the user (labeled as various names like "나", "Me", or their actual name) and multiple different people. Analyze the user's behavior patterns consistently across ALL conversations.
 
@@ -406,17 +340,17 @@ export const analyzeSelfConversation = async (
   `;
 
   try {
-    const ai = getAi();
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: selfAnalysisSchema,
-      },
-    });
+    const responseText = await callLuxiaAPI(prompt);
     
-    const jsonString = response.text.trim();
+    // JSON 파싱 시도 (마크다운 코드 블록 제거)
+    let jsonString = responseText.trim();
+    // JSON 코드 블록이 있는 경우 제거
+    if (jsonString.startsWith('```json')) {
+      jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (jsonString.startsWith('```')) {
+      jsonString = jsonString.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
     const result = JSON.parse(jsonString);
     
     // Ensure values are within 0-100 range
